@@ -1,5 +1,5 @@
 /*
-      MIDI2CV_Poly
+      8 note Poly MIDI to CV
       Copyright (C) 2020 Craig Barnes
 
       A big thankyou to Elkayem for his midi to cv code
@@ -115,6 +115,8 @@ int keyboardMode;
 int octave;
 int realoctave;
 
+unsigned int velmV;
+
 float noteTrig[8];
 float monoTrig;
 float unisonTrig;
@@ -143,7 +145,6 @@ int prevNote = 0;              //Initialised to middle value
 bool notes[88] = { 0 }, initial_loop = 1;
 int8_t noteOrder[40] = { 0 }, orderIndx = { 0 };
 bool S1, S2;
-unsigned long trigTimer = 0;
 
 // MIDI setup
 
@@ -423,11 +424,7 @@ void commandNote(int noteMsg) {
   outputDAC(DAC_NOTE2, sample_data);
   digitalWrite(GATE_NOTE1, HIGH);
   digitalWrite(TRIG_NOTE1, HIGH);
-  trigTimer = millis();
-  while (millis() < trigTimer + trigTimeout) {
-    // wait 50 milliseconds
-  }
-  digitalWrite(TRIG_NOTE1, LOW);
+  noteTrig[0] = millis();
 }
 
 void commandTopNoteUni() {
@@ -537,35 +534,29 @@ void commandNoteUni(int noteMsg) {
   outputDAC(DAC_NOTE2, sample_data);
 
   digitalWrite(TRIG_NOTE1, HIGH);
+  noteTrig[0] = millis();
   digitalWrite(GATE_NOTE1, HIGH);
   digitalWrite(TRIG_NOTE2, HIGH);
+  noteTrig[1] = millis();
   digitalWrite(GATE_NOTE2, HIGH);
   digitalWrite(TRIG_NOTE3, HIGH);
+  noteTrig[2] = millis();
   digitalWrite(GATE_NOTE3, HIGH);
   digitalWrite(TRIG_NOTE4, HIGH);
+  noteTrig[3] = millis();
   digitalWrite(GATE_NOTE4, HIGH);
   digitalWrite(TRIG_NOTE5, HIGH);
+  noteTrig[4] = millis();
   digitalWrite(GATE_NOTE5, HIGH);
   digitalWrite(TRIG_NOTE6, HIGH);
+  noteTrig[5] = millis();
   digitalWrite(GATE_NOTE6, HIGH);
   digitalWrite(TRIG_NOTE7, HIGH);
+  noteTrig[6] = millis();
   digitalWrite(GATE_NOTE7, HIGH);
   digitalWrite(TRIG_NOTE8, HIGH);
+  noteTrig[7] = millis();
   digitalWrite(GATE_NOTE8, HIGH);
-
-  trigTimer = millis();
-  while (millis() < trigTimer + trigTimeout) {
-    // wait 50 milliseconds
-  }
-
-  digitalWrite(TRIG_NOTE1, LOW);
-  digitalWrite(TRIG_NOTE2, LOW);
-  digitalWrite(TRIG_NOTE3, LOW);
-  digitalWrite(TRIG_NOTE4, LOW);
-  digitalWrite(TRIG_NOTE5, LOW);
-  digitalWrite(TRIG_NOTE6, LOW);
-  digitalWrite(TRIG_NOTE7, LOW);
-  digitalWrite(TRIG_NOTE8, LOW);
 }
 
 void myNoteOn(byte channel, byte note, byte velocity) {
@@ -573,345 +564,303 @@ void myNoteOn(byte channel, byte note, byte velocity) {
   if (note < 0 || note > 127) return;
 
   prevNote = note;
-  if (keyboardMode == 0) {
-    switch (getVoiceNo(-1)) {
-      case 1:
-        voices[0].note = note;
-        voices[0].velocity = velocity;
-        voices[0].timeOn = millis();
-        updateVoice1();
+  switch (keyboardMode) {
+    case 0:
+      switch (getVoiceNo(-1)) {
+        case 1:
+          voices[0].note = note;
+          voices[0].velocity = velocity;
+          voices[0].timeOn = millis();
+          updateVoice1();
+          digitalWrite(GATE_NOTE1, HIGH);
+          digitalWrite(TRIG_NOTE1, HIGH);
+          noteTrig[0] = millis();
+          voiceOn[0] = true;
+          break;
 
-        digitalWrite(GATE_NOTE1, HIGH);
-        digitalWrite(TRIG_NOTE1, HIGH);
-        noteTrig[0] = millis();
-        while (millis() < noteTrig[0] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE1, LOW);  // Set trigger low after 20 msec
-        voiceOn[0] = true;
-        break;
-      case 2:
-        voices[1].note = note;
-        voices[1].velocity = velocity;
-        voices[1].timeOn = millis();
-        updateVoice2();
+        case 2:
+          voices[1].note = note;
+          voices[1].velocity = velocity;
+          voices[1].timeOn = millis();
+          updateVoice2();
+          digitalWrite(GATE_NOTE2, HIGH);
+          digitalWrite(TRIG_NOTE2, HIGH);
+          noteTrig[1] = millis();
+          voiceOn[1] = true;
+          break;
 
-        digitalWrite(GATE_NOTE2, HIGH);
-        digitalWrite(TRIG_NOTE2, HIGH);
-        noteTrig[1] = millis();
-        while (millis() < noteTrig[1] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE2, LOW);
-        voiceOn[1] = true;
-        break;
-      case 3:
-        voices[2].note = note;
-        voices[2].velocity = velocity;
-        voices[2].timeOn = millis();
-        updateVoice3();
+        case 3:
+          voices[2].note = note;
+          voices[2].velocity = velocity;
+          voices[2].timeOn = millis();
+          updateVoice3();
+          digitalWrite(GATE_NOTE3, HIGH);
+          digitalWrite(TRIG_NOTE3, HIGH);
+          noteTrig[2] = millis();
+          voiceOn[2] = true;
+          break;
 
-        digitalWrite(GATE_NOTE3, HIGH);
-        digitalWrite(TRIG_NOTE3, HIGH);
-        noteTrig[2] = millis();
-        while (millis() < noteTrig[2] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE3, LOW);
-        voiceOn[2] = true;
-        break;
-      case 4:
-        voices[3].note = note;
-        voices[3].velocity = velocity;
-        voices[3].timeOn = millis();
-        updateVoice4();
+        case 4:
+          voices[3].note = note;
+          voices[3].velocity = velocity;
+          voices[3].timeOn = millis();
+          updateVoice4();
+          digitalWrite(GATE_NOTE4, HIGH);
+          digitalWrite(TRIG_NOTE4, HIGH);
+          noteTrig[3] = millis();
+          voiceOn[3] = true;
+          break;
 
-        digitalWrite(GATE_NOTE4, HIGH);
-        digitalWrite(TRIG_NOTE4, HIGH);
-        noteTrig[3] = millis();
-        while (millis() < noteTrig[3] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE4, LOW);
-        voiceOn[3] = true;
-        break;
-      case 5:
-        voices[4].note = note;
-        voices[4].velocity = velocity;
-        voices[4].timeOn = millis();
-        updateVoice5();
+        case 5:
+          voices[4].note = note;
+          voices[4].velocity = velocity;
+          voices[4].timeOn = millis();
+          updateVoice5();
+          digitalWrite(GATE_NOTE5, HIGH);
+          digitalWrite(TRIG_NOTE5, HIGH);
+          noteTrig[4] = millis();
+          voiceOn[4] = true;
+          break;
 
-        digitalWrite(GATE_NOTE5, HIGH);
-        digitalWrite(TRIG_NOTE5, HIGH);
-        noteTrig[4] = millis();
-        while (millis() < noteTrig[4] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE5, LOW);
-        voiceOn[4] = true;
-        break;
-      case 6:
-        voices[5].note = note;
-        voices[5].velocity = velocity;
-        voices[5].timeOn = millis();
-        updateVoice6();
+        case 6:
+          voices[5].note = note;
+          voices[5].velocity = velocity;
+          voices[5].timeOn = millis();
+          updateVoice6();
+          digitalWrite(GATE_NOTE6, HIGH);
+          digitalWrite(TRIG_NOTE6, HIGH);
+          noteTrig[5] = millis();
+          voiceOn[5] = true;
+          break;
 
-        digitalWrite(GATE_NOTE6, HIGH);
-        digitalWrite(TRIG_NOTE6, HIGH);
-        noteTrig[5] = millis();
-        while (millis() < noteTrig[5] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE6, LOW);
-        voiceOn[5] = true;
-        break;
-      case 7:
-        voices[6].note = note;
-        voices[6].velocity = velocity;
-        voices[6].timeOn = millis();
-        updateVoice7();
+        case 7:
+          voices[6].note = note;
+          voices[6].velocity = velocity;
+          voices[6].timeOn = millis();
+          updateVoice7();
+          digitalWrite(GATE_NOTE7, HIGH);
+          digitalWrite(TRIG_NOTE7, HIGH);
+          noteTrig[6] = millis();
+          voiceOn[6] = true;
+          break;
 
-        digitalWrite(GATE_NOTE7, HIGH);
-        digitalWrite(TRIG_NOTE7, HIGH);
-        noteTrig[6] = millis();
-        while (millis() < noteTrig[6] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE7, LOW);
-        voiceOn[6] = true;
-        break;
-      case 8:
-        voices[7].note = note;
-        voices[7].velocity = velocity;
-        voices[7].timeOn = millis();
-        updateVoice8();
-
-        digitalWrite(GATE_NOTE8, HIGH);
-        digitalWrite(TRIG_NOTE8, HIGH);
-        noteTrig[7] = millis();
-        while (millis() < noteTrig[7] + trigTimeout) {
-          // wait 50 milliseconds
-        }
-        digitalWrite(TRIG_NOTE8, LOW);
-        voiceOn[7] = true;
-        break;
-    }
-  } else if (keyboardMode == 4 || keyboardMode == 5 || keyboardMode == 6) {
-    if (keyboardMode == 4) {
-      S1 = 1;
-      S2 = 1;
-    }
-    if (keyboardMode == 5) {
-      S1 = 0;
-      S2 = 1;
-    }
-    if (keyboardMode == 6) {
-      S1 = 0;
-      S2 = 0;
-    }
-    noteMsg = note;
-
-    if (velocity == 0) {
-      notes[noteMsg] = false;
-    } else {
-      notes[noteMsg] = true;
-    }
-
-    unsigned int velmV = ((unsigned int)((float)velocity) * VEL_SF);
-    sample_data = (channel_a & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    if (S1 && S2) {  // Highest note priority
-      commandTopNote();
-    } else if (!S1 && S2) {  // Lowest note priority
-      commandBottomNote();
-    } else {                 // Last note priority
-      if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
-        orderIndx = (orderIndx + 1) % 40;
-        noteOrder[orderIndx] = noteMsg;
+        case 8:
+          voices[7].note = note;
+          voices[7].velocity = velocity;
+          voices[7].timeOn = millis();
+          updateVoice8();
+          digitalWrite(GATE_NOTE8, HIGH);
+          digitalWrite(TRIG_NOTE8, HIGH);
+          noteTrig[7] = millis();
+          voiceOn[7] = true;
+          break;
       }
-      commandLastNote();
-    }
-  } else if (keyboardMode == 1 || keyboardMode == 2 || keyboardMode == 3) {
-    if (keyboardMode == 1) {
-      S1 = 1;
-      S2 = 1;
-    }
-    if (keyboardMode == 2) {
-      S1 = 0;
-      S2 = 1;
-    }
-    if (keyboardMode == 3) {
-      S1 = 0;
-      S2 = 0;
-    }
-    noteMsg = note;
+      break;
 
-    if (velocity == 0 )  {
-      notes[noteMsg] = false;
-    } else {
-      notes[noteMsg] = true;
-    }
-
-    unsigned int velmV = ((unsigned int)((float)velocity) * VEL_SF);
-    sample_data = (channel_a & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    sample_data = (channel_b & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    sample_data = (channel_c & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    sample_data = (channel_d & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    sample_data = (channel_e & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    sample_data = (channel_f & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    sample_data = (channel_g & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    sample_data = (channel_h & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    if (S1 && S2) {  // Highest note priority
-      commandTopNoteUni();
-    } else if (!S1 && S2) {  // Lowest note priority
-      commandBottomNoteUni();
-    } else {                 // Last note priority
-      if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
-        orderIndx = (orderIndx + 1) % 40;
-        noteOrder[orderIndx] = noteMsg;
+    case 1:
+    case 2:
+    case 3:
+      if (keyboardMode == 1) {
+        S1 = 1;
+        S2 = 1;
       }
-      commandLastNoteUni();
-    }
+      if (keyboardMode == 2) {
+        S1 = 0;
+        S2 = 1;
+      }
+      if (keyboardMode == 3) {
+        S1 = 0;
+        S2 = 0;
+      }
+      noteMsg = note;
+
+      if (velocity == 0) {
+        notes[noteMsg] = false;
+      } else {
+        notes[noteMsg] = true;
+      }
+
+      velmV = ((unsigned int)((float)velocity) * VEL_SF);
+      sample_data = (channel_a & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      sample_data = (channel_b & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      sample_data = (channel_c & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      sample_data = (channel_d & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      sample_data = (channel_e & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      sample_data = (channel_f & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      sample_data = (channel_g & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      sample_data = (channel_h & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      if (S1 && S2) {  // Highest note priority
+        commandTopNoteUni();
+      } else if (!S1 && S2) {  // Lowest note priority
+        commandBottomNoteUni();
+      } else {                 // Last note priority
+        if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
+          orderIndx = (orderIndx + 1) % 40;
+          noteOrder[orderIndx] = noteMsg;
+        }
+        commandLastNoteUni();
+      }
+      break;
+
+    case 4:
+    case 5:
+    case 6:
+      if (keyboardMode == 4) {
+        S1 = 1;
+        S2 = 1;
+      }
+      if (keyboardMode == 5) {
+        S1 = 0;
+        S2 = 1;
+      }
+      if (keyboardMode == 6) {
+        S1 = 0;
+        S2 = 0;
+      }
+      noteMsg = note;
+
+      if (velocity == 0) {
+        notes[noteMsg] = false;
+      } else {
+        notes[noteMsg] = true;
+      }
+
+      velmV = ((unsigned int)((float)velocity) * VEL_SF);
+      sample_data = (channel_a & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
+      outputDAC(DAC_NOTE3, sample_data);
+      if (S1 && S2) {  // Highest note priority
+        commandTopNote();
+      } else if (!S1 && S2) {  // Lowest note priority
+        commandBottomNote();
+      } else {                 // Last note priority
+        if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
+          orderIndx = (orderIndx + 1) % 40;
+          noteOrder[orderIndx] = noteMsg;
+        }
+        commandLastNote();
+      }
+      break;
   }
 }
 
 void myNoteOff(byte channel, byte note, byte velocity) {
-  if (keyboardMode == 0) {
-    switch (getVoiceNo(note)) {
-      case 1:
-        digitalWrite(GATE_NOTE1, LOW);
-        voices[0].note = -1;
-        voiceOn[0] = false;
-        break;
-      case 2:
-        digitalWrite(GATE_NOTE2, LOW);
-        voices[1].note = -1;
-        voiceOn[1] = false;
-        break;
-      case 3:
-        digitalWrite(GATE_NOTE3, LOW);
-        voices[2].note = -1;
-        voiceOn[2] = false;
-        break;
-      case 4:
-        digitalWrite(GATE_NOTE4, LOW);
-        voices[3].note = -1;
-        voiceOn[3] = false;
-        break;
-      case 5:
-        digitalWrite(GATE_NOTE5, LOW);
-        voices[4].note = -1;
-        voiceOn[4] = false;
-        break;
-      case 6:
-        digitalWrite(GATE_NOTE6, LOW);
-        voices[5].note = -1;
-        voiceOn[5] = false;
-        break;
-      case 7:
-        digitalWrite(GATE_NOTE7, LOW);
-        voices[6].note = -1;
-        voiceOn[6] = false;
-        break;
-      case 8:
-        digitalWrite(GATE_NOTE8, LOW);
-        voices[7].note = -1;
-        voiceOn[7] = false;
-        break;
-    }
-  } else if (keyboardMode == 4 || keyboardMode == 5 || keyboardMode == 6) {
-    if (keyboardMode == 4) {
-      S1 = 1;
-      S2 = 1;
-    }
-    if (keyboardMode == 5) {
-      S1 = 0;
-      S2 = 1;
-    }
-    if (keyboardMode == 6) {
-      S1 = 0;
-      S2 = 0;
-    }
-    noteMsg = note;
-
-    // if (velocity == 0 || velocity == 64) {
-      notes[noteMsg] = false;
-    // } else {
-    //   notes[noteMsg] = true;
-    // }
-
-    // Pins NP_SEL1 and NP_SEL2 indictate note priority
-    unsigned int velmV = ((unsigned int)((float)velocity) * VEL_SF);
-    sample_data = (channel_a & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE3, sample_data);
-    if (S1 && S2) {  // Highest note priority
-      commandTopNote();
-    } else if (!S1 && S2) {  // Lowest note priority
-      commandBottomNote();
-    } else {                 // Last note priority
-      if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
-        orderIndx = (orderIndx + 1) % 40;
-        noteOrder[orderIndx] = noteMsg;
+  switch (keyboardMode) {
+    case 0:
+      switch (getVoiceNo(note)) {
+        case 1:
+          digitalWrite(GATE_NOTE1, LOW);
+          voices[0].note = -1;
+          voiceOn[0] = false;
+          break;
+        case 2:
+          digitalWrite(GATE_NOTE2, LOW);
+          voices[1].note = -1;
+          voiceOn[1] = false;
+          break;
+        case 3:
+          digitalWrite(GATE_NOTE3, LOW);
+          voices[2].note = -1;
+          voiceOn[2] = false;
+          break;
+        case 4:
+          digitalWrite(GATE_NOTE4, LOW);
+          voices[3].note = -1;
+          voiceOn[3] = false;
+          break;
+        case 5:
+          digitalWrite(GATE_NOTE5, LOW);
+          voices[4].note = -1;
+          voiceOn[4] = false;
+          break;
+        case 6:
+          digitalWrite(GATE_NOTE6, LOW);
+          voices[5].note = -1;
+          voiceOn[5] = false;
+          break;
+        case 7:
+          digitalWrite(GATE_NOTE7, LOW);
+          voices[6].note = -1;
+          voiceOn[6] = false;
+          break;
+        case 8:
+          digitalWrite(GATE_NOTE8, LOW);
+          voices[7].note = -1;
+          voiceOn[7] = false;
+          break;
       }
-      commandLastNote();
-    }
-  } else if (keyboardMode == 1 || keyboardMode == 2 || keyboardMode == 3) {
-    if (keyboardMode == 1) {
-      S1 = 1;
-      S2 = 1;
-    }
-    if (keyboardMode == 2) {
-      S1 = 0;
-      S2 = 1;
-    }
-    if (keyboardMode == 3) {
-      S1 = 0;
-      S2 = 0;
-    }
-    noteMsg = note;
+      break;
 
-//    if (velocity == 0 || velocity == 64) {
-      notes[noteMsg] = false;
-    // } else {
-    //   notes[noteMsg] = true;
-    // }
-
-    // unsigned int velmV = ((unsigned int)((float)velocity) * VEL_SF);
-    // sample_data = (channel_a & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    // sample_data = (channel_b & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    // sample_data = (channel_c & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    // sample_data = (channel_d & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    // sample_data = (channel_e & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    // sample_data = (channel_f & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    // sample_data = (channel_g & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    // sample_data = (channel_h & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE3, sample_data);
-    if (S1 && S2) {  // Highest note priority
-      commandTopNoteUni();
-    } else if (!S1 && S2) {  // Lowest note priority
-      commandBottomNoteUni();
-    } else {                 // Last note priority
-      if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
-        orderIndx = (orderIndx + 1) % 40;
-        noteOrder[orderIndx] = noteMsg;
+    case 1:
+    case 2:
+    case 3:
+      if (keyboardMode == 1) {
+        S1 = 1;
+        S2 = 1;
       }
-      commandLastNoteUni();
-    }
+      if (keyboardMode == 2) {
+        S1 = 0;
+        S2 = 1;
+      }
+      if (keyboardMode == 3) {
+        S1 = 0;
+        S2 = 0;
+      }
+      noteMsg = note;
+
+      notes[noteMsg] = false;
+
+      if (S1 && S2) {  // Highest note priority
+        commandTopNoteUni();
+      } else if (!S1 && S2) {  // Lowest note priority
+        commandBottomNoteUni();
+      } else {                 // Last note priority
+        if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
+          orderIndx = (orderIndx + 1) % 40;
+          noteOrder[orderIndx] = noteMsg;
+        }
+        commandLastNoteUni();
+      }
+      break;
+
+    case 4:
+    case 5:
+    case 6:
+      if (keyboardMode == 4) {
+        S1 = 1;
+        S2 = 1;
+      }
+      if (keyboardMode == 5) {
+        S1 = 0;
+        S2 = 1;
+      }
+      if (keyboardMode == 6) {
+        S1 = 0;
+        S2 = 0;
+      }
+      noteMsg = note;
+
+      notes[noteMsg] = false;
+
+      if (S1 && S2) {  // Highest note priority
+        commandTopNote();
+      } else if (!S1 && S2) {  // Lowest note priority
+        commandBottomNote();
+      } else {                 // Last note priority
+        if (notes[noteMsg]) {  // If note is on and using last note priority, add to ordered list
+          orderIndx = (orderIndx + 1) % 40;
+          noteOrder[orderIndx] = noteMsg;
+        }
+        commandLastNote();
+      }
+      break;
   }
 }
 
@@ -949,6 +898,42 @@ int getVoiceNo(int note) {
   }
   //Shouldn't get here, return voice 1
   return 1;
+}
+
+void updateTimers() {
+
+  if (millis() > noteTrig[0] + trigTimeout) {
+    digitalWrite(TRIG_NOTE1, LOW);  // Set trigger low after 20 msec
+  }
+
+  if (millis() > noteTrig[1] + trigTimeout) {
+    digitalWrite(TRIG_NOTE2, LOW);  // Set trigger low after 20 msec
+  }
+
+  if (millis() > noteTrig[2] + trigTimeout) {
+    digitalWrite(TRIG_NOTE3, LOW);  // Set trigger low after 20 msec
+  }
+
+  if (millis() > noteTrig[3] + trigTimeout) {
+    digitalWrite(TRIG_NOTE4, LOW);  // Set trigger low after 20 msec
+  }
+
+  if (millis() > noteTrig[4] + trigTimeout) {
+    digitalWrite(TRIG_NOTE5, LOW);  // Set trigger low after 20 msec
+  }
+
+  if (millis() > noteTrig[5] + trigTimeout) {
+    digitalWrite(TRIG_NOTE6, LOW);  // Set trigger low after 20 msec
+  }
+
+  if (millis() > noteTrig[6] + trigTimeout) {
+    digitalWrite(TRIG_NOTE7, LOW);  // Set trigger low after 20 msec
+  }
+
+  if (millis() > noteTrig[7] + trigTimeout) {
+    digitalWrite(TRIG_NOTE8, LOW);  // Set trigger low after 20 msec
+  }
+
 }
 
 void updateVoice1() {
@@ -1065,6 +1050,7 @@ void loop() {
   updateEncoderPos();
   updateEncoderPosB();
   encButton.update();
+  updateTimers();
 
   if (encButton.fell()) {
     if (initial_loop == 1) {
