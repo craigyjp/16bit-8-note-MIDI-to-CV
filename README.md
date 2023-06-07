@@ -1,8 +1,12 @@
 # 16bit-8-note-MIDI-to-CV
 
-Newer version of my old 6 note poly CV converter, this time it uses 16 bit DACs and has the facility for autotune (not yet implemented)
+* Collaboration with Andreas Oswald Hierzenberger
 
-Using a teensy 4.1, the CV's, Pitchbend, CC, gates and triggers will all need some level conversion in hardware which I've covered in the schematic PDF. I've used matching 10k resistors on the DAC level converters to give 2x conversion and this gives 1v/octave, the triggers and gates are currently +5v.
+Newer version of my old 6 note poly CV converter, this time it uses 16 bit DACs and has the facility for autotune (not yet implemented). 
+
+Using a teensy 4.1, the CV's, Pitchbend, CC, gates and triggers will all need some level conversion in hardware which I've covered in the schematic PDF. I've used matching 12k/36k resistors on the CV DAC level converters to give 4x conversion and this gives 1v/octave, Velocity uses 10k/10k for 2x conversion for 0-5v velocity range.
+
+The triggers and gates are currently +5v.
 
 8 note polyphonic
 
