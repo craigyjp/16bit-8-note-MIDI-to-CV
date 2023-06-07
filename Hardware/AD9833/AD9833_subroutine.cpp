@@ -1,7 +1,7 @@
 // ----------------------------- DCO vars
 const int FSYNC_PINS[8] = {2, 3, 4, 5, 6, 7, 8, 9};
-#define SPI_CLOCK_SPEED 25000000                     // 7.5 MHz SPI clock - this works ALMOST without clock ticks
-unsigned long MCLK = 25000000;
+#define SPI_CLOCK_SPEED 7500000                     // 7.5 MHz SPI clock - this works ALMOST without clock ticks
+unsigned long MCLK = 7500000;
 
 void AD9833Reset(int AD_board) {
   SPI.beginTransaction(SPISettings(SPI_CLOCK_SPEED, MSBFIRST, SPI_MODE2));
