@@ -80,7 +80,7 @@
 
 // Scale Factor will generate 0.5v/octave
 // 4 octave keyboard on a 3.3v powered DAC
-#define NOTE_SF 547.00f
+#define NOTE_SF 273.50f
 #define VEL_SF 256.0
 
 #define OLED_RESET 17
@@ -270,39 +270,33 @@ void setup() {
   // digitalWrite(MUX_S3, LOW);
   digitalWrite(MUX_ENABLE, LOW);
 
-  SPI.setDataMode(SPI_MODE1);
   SPI.begin();
 
   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(DAC_NOTE1, LOW);
+  SPI.transfer32(int_ref_on_flexible_mode);
   delayMicroseconds(1);
-  SPI.transfer(int_ref_on_flexible_mode >> 24);
-  SPI.transfer(int_ref_on_flexible_mode >> 16);
-  SPI.transfer(int_ref_on_flexible_mode >> 8);
-  SPI.transfer(int_ref_on_flexible_mode);
   digitalWrite(DAC_NOTE1, HIGH);
   SPI.endTransaction();
+
+  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(DAC_NOTE2, LOW);
+  SPI.transfer32(int_ref_on_flexible_mode);
   delayMicroseconds(1);
-  SPI.transfer(int_ref_on_flexible_mode >> 24);
-  SPI.transfer(int_ref_on_flexible_mode >> 16);
-  SPI.transfer(int_ref_on_flexible_mode >> 8);
-  SPI.transfer(int_ref_on_flexible_mode);
   digitalWrite(DAC_NOTE2, HIGH);
   SPI.endTransaction();
+
+  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(DAC_NOTE3, LOW);
+  SPI.transfer32(int_ref_on_flexible_mode);
   delayMicroseconds(1);
-  SPI.transfer(int_ref_on_flexible_mode >> 24);
-  SPI.transfer(int_ref_on_flexible_mode >> 16);
-  SPI.transfer(int_ref_on_flexible_mode >> 8);
-  SPI.transfer(int_ref_on_flexible_mode);
   digitalWrite(DAC_NOTE3, HIGH);
+  SPI.endTransaction();
+
+  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(DAC_NOTE4, LOW);
+  SPI.transfer32(int_ref_on_flexible_mode);
   delayMicroseconds(1);
-  SPI.transfer(int_ref_on_flexible_mode >> 24);
-  SPI.transfer(int_ref_on_flexible_mode >> 16);
-  SPI.transfer(int_ref_on_flexible_mode >> 8);
-  SPI.transfer(int_ref_on_flexible_mode);
   digitalWrite(DAC_NOTE4, HIGH);
   SPI.endTransaction();
 
@@ -390,9 +384,9 @@ void setup() {
 
 void myPitchBend(byte channel, int bend) {
   if ((channel == masterChan) || (masterChan == 0)) {
-    bend_data = int(bend * 1.605);
-    //sample_data = (channel_a & 0xFFF0000F) | (((int(bend * 1.605) + 13180) & 0xFFFF) << 4);
-    //outputDAC(DAC_NOTE4, sample_data);
+    bend_data = int(bend * 0.395);
+    // sample_data = (channel_a & 0xFFF0000F) | (((int(bend * 0.395) + 13180) & 0xFFFF) << 4);
+    // outputDAC(DAC_NOTE4, sample_data);
   }
 }
 
@@ -1121,10 +1115,8 @@ void loop() {
 void outputDAC(int CHIP_SELECT, uint32_t sample_data) {
   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(CHIP_SELECT, LOW);
-  SPI.transfer(sample_data >> 24);
-  SPI.transfer(sample_data >> 16);
-  SPI.transfer(sample_data >> 8);
-  SPI.transfer(sample_data);
+  SPI.transfer32(sample_data);
+  delayMicroseconds(8); // Settling time delay
   digitalWrite(CHIP_SELECT, HIGH);
   SPI.endTransaction();
 }
