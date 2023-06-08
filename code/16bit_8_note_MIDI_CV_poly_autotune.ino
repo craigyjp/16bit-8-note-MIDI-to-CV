@@ -39,6 +39,11 @@
 #define DAC_NOTE3 9
 #define DAC_NOTE4 6
 
+#define FM_INPUT A10
+float FM_VALUE = 0.0f;  
+float LAST_FM = 0.0f;
+float FM_INTENSITY = 15.0f; 
+
 //Autotune MUX
 
 // #define MUX_S0 10
@@ -147,7 +152,7 @@ boolean voiceOn[NO_OF_VOICES] = { false, false, false, false, false, false, fals
 int voiceToReturn = -1;        //Initialise to 'null'
 long earliestTime = millis();  //For voice allocation - initialise to now
 int prevNote = 0;              //Initialised to middle value
-bool notes[88] = { 0 }, initial_loop = 1;
+bool notes[128] = { 0 }, initial_loop = 1;
 int8_t noteOrder[40] = { 0 }, orderIndx = { 0 };
 bool S1, S2;
 
@@ -212,6 +217,9 @@ bool highlightEnabled = false;   // Flag indicating whether highighting should b
 unsigned long int highlightTimer = 0;
 
 void setup() {
+
+  analogReadResolution(12);
+
   pinMode(GATE_NOTE1, OUTPUT);
   pinMode(GATE_NOTE2, OUTPUT);
   pinMode(GATE_NOTE3, OUTPUT);
@@ -393,19 +401,22 @@ void myPitchBend(byte channel, int bend) {
 void myControlChange(byte channel, byte number, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
     if (number == 1) {
-      sample_data = (channel_b & 0xFFF0000F) | (((int(value * 207)) & 0xFFFF) << 4);
+      sample_data = (channel_c & 0xFFF0000F) | (((int(value * 134)) & 0xFFFF) << 4);
       outputDAC(DAC_NOTE4, sample_data);
-    } else {
-      MIDI.sendControlChange(number, value, channel);
     }
   }
+}
+
+void fm_task() {
+  FM_VALUE = analogRead(FM_INPUT);
+  FM_VALUE = map(FM_VALUE, 0, 4095, -2048, 2048);
 }
 
 void commandTopNote() {
   int topNote = 0;
   bool noteActive = false;
 
-  for (int i = 0; i < 88; i++) {
+  for (int i = 0; i < 128; i++) {
     if (notes[i]) {
       topNote = i;
       noteActive = true;
@@ -464,7 +475,7 @@ void commandTopNoteUni() {
   int topNote = 0;
   bool noteActive = false;
 
-  for (int i = 0; i < 88; i++) {
+  for (int i = 0; i < 128; i++) {
     if (notes[i]) {
       topNote = i;
       noteActive = true;
@@ -968,7 +979,7 @@ void updateTimers() {
 }
 
 void updateVoice1() {
-  unsigned int mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data + FM_VALUE));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data1);
   outputDAC(DAC_NOTE2, sample_data1);
@@ -978,7 +989,7 @@ void updateVoice1() {
 }
 
 void updateVoice2() {
-  unsigned int mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data + FM_VALUE));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data2);
   outputDAC(DAC_NOTE2, sample_data2);
@@ -988,7 +999,7 @@ void updateVoice2() {
 }
 
 void updateVoice3() {
-  unsigned int mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data + FM_VALUE));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data3);
   outputDAC(DAC_NOTE2, sample_data3);
@@ -998,7 +1009,7 @@ void updateVoice3() {
 }
 
 void updateVoice4() {
-  unsigned int mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data + FM_VALUE));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data4);
   outputDAC(DAC_NOTE2, sample_data4);
@@ -1008,7 +1019,7 @@ void updateVoice4() {
 }
 
 void updateVoice5() {
-  unsigned int mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data + FM_VALUE));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data5);
   outputDAC(DAC_NOTE2, sample_data5);
@@ -1018,7 +1029,7 @@ void updateVoice5() {
 }
 
 void updateVoice6() {
-  unsigned int mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data + FM_VALUE));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data6);
   outputDAC(DAC_NOTE2, sample_data6);
@@ -1028,7 +1039,7 @@ void updateVoice6() {
 }
 
 void updateVoice7() {
-  unsigned int mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data + FM_VALUE));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data7);
   outputDAC(DAC_NOTE2, sample_data7);
@@ -1038,7 +1049,7 @@ void updateVoice7() {
 }
 
 void updateVoice8() {
-  unsigned int mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data));
+  unsigned int mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data + FM_VALUE));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data8);
   outputDAC(DAC_NOTE2, sample_data8);
@@ -1102,6 +1113,7 @@ void loop() {
   midi1.read(masterChan);    //USB HOST MIDI Class Compliant
   MIDI.read(masterChan);     //MIDI 5 Pin DIN
   usbMIDI.read(masterChan);  //USB Client MIDI
+  fm_task();
   updateVoice1();
   updateVoice2();
   updateVoice3();
