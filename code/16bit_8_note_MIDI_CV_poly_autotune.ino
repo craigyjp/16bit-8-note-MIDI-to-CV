@@ -315,6 +315,7 @@ void setup() {
   midi1.setHandleNoteOff(myNoteOff);
   midi1.setHandleNoteOn(myNoteOn);
   midi1.setHandlePitchChange(myPitchBend);
+  midi1.setHandleAfterTouchChannel(myAfterTouch);
   Serial.println("USB HOST MIDI Class Compliant Listening");
 
   //MIDI 5 Pin DIN
@@ -323,6 +324,7 @@ void setup() {
   MIDI.setHandleNoteOff(myNoteOff);
   MIDI.setHandlePitchBend(myPitchBend);
   MIDI.setHandleControlChange(myControlChange);
+  MIDI.setHandleAfterTouchChannel(myAfterTouch);
   Serial.println("MIDI In DIN Listening");
 
   //USB Client MIDI
@@ -330,6 +332,7 @@ void setup() {
   usbMIDI.setHandleNoteOff(myNoteOff);
   usbMIDI.setHandleNoteOn(myNoteOn);
   usbMIDI.setHandlePitchChange(myPitchBend);
+  usbMIDI.setHandleAfterTouchChannel(myAfterTouch);
   Serial.println("USB Client MIDI Listening");
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // OLED I2C Address, may need to change for different device,
@@ -405,6 +408,58 @@ void myControlChange(byte channel, byte number, byte value) {
       outputDAC(DAC_NOTE4, sample_data);
     }
   }
+}
+
+void myAfterTouch(byte channel, byte value) {
+  if ((channel == masterChan) || (masterChan == 0)) {
+    sample_data = (channel_c & 0xFFF0000F) | (((int(value * 134)) & 0xFFFF) << 4);
+    outputDAC(DAC_NOTE4, sample_data);
+  }
+  // switch (afterTouchDepth) {
+  //   case 0:
+  //     modulation = 0;
+  //     break;
+
+  //   case 1:
+  //     modulation = int(newvalue / 5);
+  //     break;
+
+  //   case 2:
+  //     modulation = int(newvalue / 4);
+  //     break;
+
+  //   case 3:
+  //     modulation = int(newvalue / 3.5);
+  //     break;
+
+  //   case 4:
+  //     modulation = int(newvalue / 3);
+  //     break;
+
+  //   case 5:
+  //     modulation = int(newvalue / 2.5);
+  //     break;
+
+  //   case 6:
+  //     modulation = int(newvalue / 2);
+  //     break;
+
+  //   case 7:
+  //     modulation = int(newvalue / 1.75);
+  //     break;
+
+  //   case 8:
+  //     modulation = int(newvalue / 1.5);
+  //     break;
+
+  //   case 9:
+  //     modulation = int(newvalue / 1.25);
+  //     break;
+
+  //   case 10:
+  //     modulation = int(newvalue);
+  //     break;
+  // }
 }
 
 void fm_task() {
