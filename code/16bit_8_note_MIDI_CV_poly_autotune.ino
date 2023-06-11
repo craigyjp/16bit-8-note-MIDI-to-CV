@@ -26,6 +26,7 @@
 #include <Bounce2.h>
 #include <MIDI.h>
 #include <USBHost_t36.h>
+#include <RoxMux.h>
 
 // OLED I2C is used on pins 18 and 19 for Teensy 3.x
 
@@ -75,9 +76,9 @@ float TM_VALUE = 0.0f;
 #define GATE_NOTE8 40
 
 //Encoder or buttons
-#define ENC_A 14
-#define ENC_B 15
-#define ENC_BTN 16
+#define ENC_A 0
+#define ENC_B 1
+#define ENC_BTN 2
 
 // Scale Factor will generate 0.5v/octave
 // 4 octave keyboard on a 3.3v powered DAC
@@ -90,9 +91,6 @@ float TM_VALUE = 0.0f;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 int encoderPos, encoderPosPrev;
-Bounce encButton = Bounce();
-Bounce encoderA = Bounce();
-Bounce encoderB = Bounce();
 
 enum Menu {
   SETTINGS,
@@ -212,6 +210,14 @@ bool highlightEnabled = false;   // Flag indicating whether highighting should b
 #define HIGHLIGHT_TIMEOUT 20000  // Highlight disappears after 20 seconds.  Timer resets whenever encoder turned or button pushed
 unsigned long int highlightTimer = 0;
 
+#define OCTO_TOTAL 2
+#define BTN_DEBOUNCE 50
+RoxOctoswitch<OCTO_TOTAL, BTN_DEBOUNCE> octoswitch;
+// pins for 74HC165
+#define PIN_DATA 14  // pin 9 on 74HC165 (DATA)
+#define PIN_LOAD 16  // pin 1 on 74HC165 (LOAD)
+#define PIN_CLK 15   // pin 2 on 74HC165 (CLK))
+
 void setup() {
 
   analogReadResolution(12);
@@ -241,9 +247,6 @@ void setup() {
   // pinMode(MUX_S1, OUTPUT);
   // pinMode(MUX_S2, OUTPUT);
   // pinMode(MUX_S3, OUTPUT);
-  pinMode(ENC_A, INPUT_PULLUP);
-  pinMode(ENC_B, INPUT_PULLUP);
-  pinMode(ENC_BTN, INPUT_PULLUP);
 
   // pinMode(MUX_OUT, INPUT);
   // pinMode(MUX_ENABLE, OUTPUT);
@@ -276,6 +279,8 @@ void setup() {
   // digitalWrite(MUX_ENABLE, LOW);
 
   SPI.begin();
+  octoswitch.begin(PIN_DATA, PIN_LOAD, PIN_CLK);
+  octoswitch.setCallback(onButtonPress);
 
   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(DAC_NOTE1, LOW);
@@ -385,8 +390,8 @@ void setup() {
   }
 
 
-  encButton.attach(ENC_BTN);
-  encButton.interval(5);  // interval in ms
+  // encButton.attach(ENC_BTN);
+  // encButton.interval(5);  // interval in ms
 
   sample_data = ((channel_a & 0xFFF0000F) | (13180 & 0xFFFF) << 4);
   outputDAC(DAC_NOTE5, sample_data);
@@ -837,7 +842,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
         notes[noteMsg] = true;
       }
       voices[0].velocity = velocity;
-      
+
       if (S1 && S2) {  // Highest note priority
         commandTopNote();
       } else if (!S1 && S2) {  // Lowest note priority
@@ -1170,20 +1175,46 @@ void allNotesOff() {
   voiceOn[7] = false;
 }
 
-void loop() {
+void onButtonPress(uint16_t btnIndex, uint8_t btnType) {
 
-  updateEncoderPos();
-  updateEncoderPosB();
-  encButton.update();
-  updateTimers();
+  if (btnIndex == ENC_A && btnType == ROX_PRESSED) {
+    static int encoderA, encoderB, encoderA_prev;
 
-  if (encButton.fell()) {
-    if (initial_loop == 1) {
-      initial_loop = 0;  // Ignore first push after power-up
-    } else {
-      updateMenu();
-    }
+      if (highlightEnabled) {              // Update encoder position
+        encoderPosPrev = encoderPos;
+        encoderB ? encoderPos++ : encoderPos--;
+      } else {
+        highlightEnabled = true;
+        encoderPos = 0;  // Reset encoder position if highlight timed out
+        encoderPosPrev = 0;
+      }
+      highlightTimer = millis();
+      updateSelection();
+    encoderA_prev = encoderA;
   }
+
+  if (btnIndex == ENC_B && btnType == ROX_PRESSED) {
+    static int encoderA, encoderB, encoderB_prev;
+
+      if (highlightEnabled) {              // Update encoder position
+        encoderPosPrev = encoderPos;
+        encoderA ? encoderPos-- : encoderPos++;
+      } else {
+        highlightEnabled = true;
+        encoderPos = 0;  // Reset encoder position if highlight timed out
+        encoderPosPrev = 0;
+      }
+      highlightTimer = millis();
+      updateSelection();
+    encoderB_prev = encoderB;
+  }
+
+  if (btnIndex == ENC_BTN && btnType == ROX_PRESSED) {
+    updateMenu();
+  }
+}
+
+void menuTimeOut() {
 
   // Check if highlighting timer expired, and remove highlighting if so
   if (highlightEnabled && ((millis() - highlightTimer) > HIGHLIGHT_TIMEOUT)) {
@@ -1191,7 +1222,12 @@ void loop() {
     menu = SETTINGS;    // Return to top level menu
     updateSelection();  // Refresh screen without selection highlight
   }
+}
 
+void loop() {
+
+  updateTimers();
+  menuTimeOut();
   myusb.Task();
   midi1.read(masterChan);    //USB HOST MIDI Class Compliant
   MIDI.read(masterChan);     //MIDI 5 Pin DIN
@@ -1205,57 +1241,58 @@ void loop() {
   updateVoice6();
   updateVoice7();
   updateVoice8();
+  octoswitch.update();
 }
 
 void outputDAC(int CHIP_SELECT, uint32_t sample_data) {
   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(CHIP_SELECT, LOW);
   SPI.transfer32(sample_data);
-  delayMicroseconds(8); // Settling time delay
+  delayMicroseconds(8);  // Settling time delay
   digitalWrite(CHIP_SELECT, HIGH);
   SPI.endTransaction();
 }
 
 
-void updateEncoderPos() {
-  static int encoderA, encoderB, encoderA_prev;
+// void updateEncoderPos() {
+//   static int encoderA, encoderB, encoderA_prev;
 
-  encoderA = digitalRead(ENC_A);
+//   encoderA = digitalRead(ENC_A);
 
-  if ((!encoderA) && (encoderA_prev)) {  // A has gone from high to low
-    if (highlightEnabled) {              // Update encoder position
-      encoderPosPrev = encoderPos;
-      encoderB ? encoderPos++ : encoderPos--;
-    } else {
-      highlightEnabled = true;
-      encoderPos = 0;  // Reset encoder position if highlight timed out
-      encoderPosPrev = 0;
-    }
-    highlightTimer = millis();
-    updateSelection();
-  }
-  encoderA_prev = encoderA;
-}
+//   if ((!encoderA) && (encoderA_prev)) {  // A has gone from high to low
+//     if (highlightEnabled) {              // Update encoder position
+//       encoderPosPrev = encoderPos;
+//       encoderB ? encoderPos++ : encoderPos--;
+//     } else {
+//       highlightEnabled = true;
+//       encoderPos = 0;  // Reset encoder position if highlight timed out
+//       encoderPosPrev = 0;
+//     }
+//     highlightTimer = millis();
+//     updateSelection();
+//   }
+//   encoderA_prev = encoderA;
+// }
 
-void updateEncoderPosB() {
-  static int encoderA, encoderB, encoderB_prev;
+// void updateEncoderPosB() {
+//   static int encoderA, encoderB, encoderB_prev;
 
-  encoderB = digitalRead(ENC_B);
+//   encoderB = digitalRead(ENC_B);
 
-  if ((!encoderB) && (encoderB_prev)) {  // A has gone from high to low
-    if (highlightEnabled) {              // Update encoder position
-      encoderPosPrev = encoderPos;
-      encoderA ? encoderPos-- : encoderPos++;
-    } else {
-      highlightEnabled = true;
-      encoderPos = 0;  // Reset encoder position if highlight timed out
-      encoderPosPrev = 0;
-    }
-    highlightTimer = millis();
-    updateSelection();
-  }
-  encoderB_prev = encoderB;
-}
+//   if ((!encoderB) && (encoderB_prev)) {  // A has gone from high to low
+//     if (highlightEnabled) {              // Update encoder position
+//       encoderPosPrev = encoderPos;
+//       encoderA ? encoderPos-- : encoderPos++;
+//     } else {
+//       highlightEnabled = true;
+//       encoderPos = 0;  // Reset encoder position if highlight timed out
+//       encoderPosPrev = 0;
+//     }
+//     highlightTimer = millis();
+//     updateSelection();
+//   }
+//   encoderB_prev = encoderB;
+// }
 
 int setCh;
 char setMode[6];
