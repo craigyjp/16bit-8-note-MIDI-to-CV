@@ -8,7 +8,9 @@ Using a teensy 4.1, the CV's, Pitchbend, CC, gates and triggers will all need so
 
 The triggers and gates are currently +5v.
 
-8 note polyphonic
+16 CV ouputs in 2 banks of 8 for osc1 & osc2 configurations
+
+8 filter CV outputs
 
 8 velocity outputs
 
