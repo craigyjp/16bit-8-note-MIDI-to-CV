@@ -38,11 +38,11 @@
 #define DAC_NOTE2 8
 #define DAC_NOTE3 9
 #define DAC_NOTE4 6
+#define DAC_NOTE5 10
 
 #define FM_INPUT A10
-float FM_VALUE = 0.0f;  
-float LAST_FM = 0.0f;
-float FM_INTENSITY = 15.0f; 
+float FM_VALUE = 0.0f;
+float TM_VALUE = 0.0f;
 
 //Autotune MUX
 
@@ -51,8 +51,8 @@ float FM_INTENSITY = 15.0f;
 // #define MUX_S2 25
 // #define MUX_S3 26
 
-#define MUX_ENABLE 3
-#define MUX_OUT 4
+//#define MUX_ENABLE 3
+//#define MUX_OUT 4
 
 //Trig outputs
 #define TRIG_NOTE1 32
@@ -78,10 +78,6 @@ float FM_INTENSITY = 15.0f;
 #define ENC_A 14
 #define ENC_B 15
 #define ENC_BTN 16
-#define AUTOTUNE 17
-
-#define UNISON_ON 2
-
 
 // Scale Factor will generate 0.5v/octave
 // 4 octave keyboard on a 3.3v powered DAC
@@ -240,6 +236,7 @@ void setup() {
   pinMode(DAC_NOTE2, OUTPUT);
   pinMode(DAC_NOTE3, OUTPUT);
   pinMode(DAC_NOTE4, OUTPUT);
+  pinMode(DAC_NOTE5, OUTPUT);
   // pinMode(MUX_S0, OUTPUT);
   // pinMode(MUX_S1, OUTPUT);
   // pinMode(MUX_S2, OUTPUT);
@@ -247,10 +244,9 @@ void setup() {
   pinMode(ENC_A, INPUT_PULLUP);
   pinMode(ENC_B, INPUT_PULLUP);
   pinMode(ENC_BTN, INPUT_PULLUP);
-  pinMode(UNISON_ON, INPUT);
-  pinMode(AUTOTUNE, INPUT_PULLUP);
-  pinMode(MUX_OUT, INPUT);
-  pinMode(MUX_ENABLE, OUTPUT);
+
+  // pinMode(MUX_OUT, INPUT);
+  // pinMode(MUX_ENABLE, OUTPUT);
 
   digitalWrite(GATE_NOTE1, LOW);
   digitalWrite(GATE_NOTE2, LOW);
@@ -272,11 +268,12 @@ void setup() {
   digitalWrite(DAC_NOTE2, HIGH);
   digitalWrite(DAC_NOTE3, HIGH);
   digitalWrite(DAC_NOTE4, HIGH);
+  digitalWrite(DAC_NOTE5, HIGH);
   // digitalWrite(MUX_S0, LOW);
   // digitalWrite(MUX_S1, LOW);
   // digitalWrite(MUX_S2, LOW);
   // digitalWrite(MUX_S3, LOW);
-  digitalWrite(MUX_ENABLE, LOW);
+  // digitalWrite(MUX_ENABLE, LOW);
 
   SPI.begin();
 
@@ -306,6 +303,13 @@ void setup() {
   SPI.transfer32(int_ref_on_flexible_mode);
   delayMicroseconds(1);
   digitalWrite(DAC_NOTE4, HIGH);
+  SPI.endTransaction();
+
+  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
+  digitalWrite(DAC_NOTE5, LOW);
+  SPI.transfer32(int_ref_on_flexible_mode);
+  delayMicroseconds(1);
+  digitalWrite(DAC_NOTE5, HIGH);
   SPI.endTransaction();
 
   //USB HOST MIDI Class Compliant
@@ -385,9 +389,9 @@ void setup() {
   encButton.interval(5);  // interval in ms
 
   sample_data = ((channel_a & 0xFFF0000F) | (13180 & 0xFFFF) << 4);
-  outputDAC(DAC_NOTE4, sample_data);
+  outputDAC(DAC_NOTE5, sample_data);
   sample_data = ((channel_b & 0xFFF0000F) | (0 & 0xFFFF) << 4);
-  outputDAC(DAC_NOTE4, sample_data);
+  outputDAC(DAC_NOTE5, sample_data);
 
   menu = SETTINGS;
   updateSelection();
@@ -397,7 +401,7 @@ void myPitchBend(byte channel, int bend) {
   if ((channel == masterChan) || (masterChan == 0)) {
     bend_data = int(bend * 0.395);
     // sample_data = (channel_a & 0xFFF0000F) | (((int(bend * 0.395) + 13180) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE4, sample_data);
+    // outputDAC(DAC_NOTE5, sample_data);
   }
 }
 
@@ -405,7 +409,7 @@ void myControlChange(byte channel, byte number, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
     if (number == 1) {
       sample_data = (channel_c & 0xFFF0000F) | (((int(value * 134)) & 0xFFFF) << 4);
-      outputDAC(DAC_NOTE4, sample_data);
+      outputDAC(DAC_NOTE5, sample_data);
     }
   }
 }
@@ -413,7 +417,7 @@ void myControlChange(byte channel, byte number, byte value) {
 void myAfterTouch(byte channel, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
     sample_data = (channel_c & 0xFFF0000F) | (((int(value * 134)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE4, sample_data);
+    outputDAC(DAC_NOTE5, sample_data);
   }
   // switch (afterTouchDepth) {
   //   case 0:
@@ -1038,6 +1042,9 @@ void updateVoice1() {
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data1);
   outputDAC(DAC_NOTE2, sample_data1);
+  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (TM_VALUE));
+  sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data1);
   unsigned int velmV = ((unsigned int)((float)voices[0].velocity) * VEL_SF);
   vel_data1 = (channel_a & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data1);
@@ -1048,6 +1055,9 @@ void updateVoice2() {
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data2);
   outputDAC(DAC_NOTE2, sample_data2);
+  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (TM_VALUE));
+  sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data2);
   unsigned int velmV = ((unsigned int)((float)voices[1].velocity) * VEL_SF);
   vel_data2 = (channel_b & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data2);
@@ -1058,6 +1068,9 @@ void updateVoice3() {
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data3);
   outputDAC(DAC_NOTE2, sample_data3);
+  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (TM_VALUE));
+  sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data3);
   unsigned int velmV = ((unsigned int)((float)voices[2].velocity) * VEL_SF);
   vel_data3 = (channel_c & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data3);
@@ -1068,6 +1081,9 @@ void updateVoice4() {
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data4);
   outputDAC(DAC_NOTE2, sample_data4);
+  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (TM_VALUE));
+  sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data4);
   unsigned int velmV = ((unsigned int)((float)voices[3].velocity) * VEL_SF);
   vel_data4 = (channel_d & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data4);
@@ -1078,6 +1094,9 @@ void updateVoice5() {
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data5);
   outputDAC(DAC_NOTE2, sample_data5);
+  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (TM_VALUE));
+  sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data5);
   unsigned int velmV = ((unsigned int)((float)voices[4].velocity) * VEL_SF);
   vel_data5 = (channel_e & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data5);
@@ -1088,6 +1107,9 @@ void updateVoice6() {
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data6);
   outputDAC(DAC_NOTE2, sample_data6);
+  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (TM_VALUE));
+  sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data6);
   unsigned int velmV = ((unsigned int)((float)voices[5].velocity) * VEL_SF);
   vel_data6 = (channel_f & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data6);
@@ -1098,6 +1120,9 @@ void updateVoice7() {
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data7);
   outputDAC(DAC_NOTE2, sample_data7);
+  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (TM_VALUE));
+  sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data7);
   unsigned int velmV = ((unsigned int)((float)voices[6].velocity) * VEL_SF);
   vel_data7 = (channel_g & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data7);
@@ -1108,6 +1133,9 @@ void updateVoice8() {
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data8);
   outputDAC(DAC_NOTE2, sample_data8);
+  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (TM_VALUE));
+  sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE4, sample_data8);
   unsigned int velmV = ((unsigned int)((float)voices[7].velocity) * VEL_SF);
   vel_data8 = (channel_h & 0xFFF0000F) | (((int(velmV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE3, vel_data8);
