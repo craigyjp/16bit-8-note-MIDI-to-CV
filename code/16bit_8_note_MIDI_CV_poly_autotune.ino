@@ -27,6 +27,7 @@
 #include <MIDI.h>
 #include <USBHost_t36.h>
 #include <RoxMux.h>
+#include <ShiftRegister74HC595.h>
 
 // OLED I2C is used on pins 18 and 19 for Teensy 3.x
 
@@ -56,24 +57,24 @@ float TM_VALUE = 0.0f;
 //#define MUX_OUT 4
 
 //Trig outputs
-#define TRIG_NOTE1 32
-#define TRIG_NOTE2 31
-#define TRIG_NOTE3 30
-#define TRIG_NOTE4 29
-#define TRIG_NOTE5 28
-#define TRIG_NOTE6 27
-#define TRIG_NOTE7 26
-#define TRIG_NOTE8 25
+#define TRIG_NOTE1 16
+#define TRIG_NOTE2 17
+#define TRIG_NOTE3 18
+#define TRIG_NOTE4 19
+#define TRIG_NOTE5 20
+#define TRIG_NOTE6 21
+#define TRIG_NOTE7 22
+#define TRIG_NOTE8 23
 
 //Gate outputs
-#define GATE_NOTE1 33
-#define GATE_NOTE2 34
-#define GATE_NOTE3 35
-#define GATE_NOTE4 36
-#define GATE_NOTE5 37
-#define GATE_NOTE6 38
-#define GATE_NOTE7 39
-#define GATE_NOTE8 40
+#define GATE_NOTE1 0
+#define GATE_NOTE2 1
+#define GATE_NOTE3 2
+#define GATE_NOTE4 3
+#define GATE_NOTE5 4
+#define GATE_NOTE6 5
+#define GATE_NOTE7 6
+#define GATE_NOTE8 7
 
 //Encoder or buttons
 #define ENC_A 0
@@ -218,26 +219,12 @@ RoxOctoswitch<OCTO_TOTAL, BTN_DEBOUNCE> octoswitch;
 #define PIN_LOAD 16  // pin 1 on 74HC165 (LOAD)
 #define PIN_CLK 15   // pin 2 on 74HC165 (CLK))
 
+ShiftRegister74HC595<3> sr(30, 31, 32);
+
 void setup() {
 
   analogReadResolution(12);
 
-  pinMode(GATE_NOTE1, OUTPUT);
-  pinMode(GATE_NOTE2, OUTPUT);
-  pinMode(GATE_NOTE3, OUTPUT);
-  pinMode(GATE_NOTE4, OUTPUT);
-  pinMode(GATE_NOTE5, OUTPUT);
-  pinMode(GATE_NOTE6, OUTPUT);
-  pinMode(GATE_NOTE7, OUTPUT);
-  pinMode(GATE_NOTE8, OUTPUT);
-  pinMode(TRIG_NOTE1, OUTPUT);
-  pinMode(TRIG_NOTE2, OUTPUT);
-  pinMode(TRIG_NOTE3, OUTPUT);
-  pinMode(TRIG_NOTE4, OUTPUT);
-  pinMode(TRIG_NOTE5, OUTPUT);
-  pinMode(TRIG_NOTE6, OUTPUT);
-  pinMode(TRIG_NOTE7, OUTPUT);
-  pinMode(TRIG_NOTE8, OUTPUT);
   pinMode(DAC_NOTE1, OUTPUT);
   pinMode(DAC_NOTE2, OUTPUT);
   pinMode(DAC_NOTE3, OUTPUT);
@@ -251,22 +238,6 @@ void setup() {
   // pinMode(MUX_OUT, INPUT);
   // pinMode(MUX_ENABLE, OUTPUT);
 
-  digitalWrite(GATE_NOTE1, LOW);
-  digitalWrite(GATE_NOTE2, LOW);
-  digitalWrite(GATE_NOTE3, LOW);
-  digitalWrite(GATE_NOTE4, LOW);
-  digitalWrite(GATE_NOTE5, LOW);
-  digitalWrite(GATE_NOTE6, LOW);
-  digitalWrite(GATE_NOTE7, LOW);
-  digitalWrite(GATE_NOTE8, LOW);
-  digitalWrite(TRIG_NOTE1, LOW);
-  digitalWrite(TRIG_NOTE2, LOW);
-  digitalWrite(TRIG_NOTE3, LOW);
-  digitalWrite(TRIG_NOTE4, LOW);
-  digitalWrite(TRIG_NOTE5, LOW);
-  digitalWrite(TRIG_NOTE6, LOW);
-  digitalWrite(TRIG_NOTE7, LOW);
-  digitalWrite(TRIG_NOTE8, LOW);
   digitalWrite(DAC_NOTE1, HIGH);
   digitalWrite(DAC_NOTE2, HIGH);
   digitalWrite(DAC_NOTE3, HIGH);
@@ -490,7 +461,7 @@ void commandTopNote() {
   if (noteActive)
     commandNote(topNote);
   else  // All notes are off, turn off gate
-    digitalWrite(GATE_NOTE1, LOW);
+    sr.set(GATE_NOTE1, LOW);
 }
 
 void commandBottomNote() {
@@ -507,7 +478,7 @@ void commandBottomNote() {
   if (noteActive)
     commandNote(bottomNote);
   else  // All notes are off, turn off gate
-    digitalWrite(GATE_NOTE1, LOW);
+    sr.set(GATE_NOTE1, LOW);
 }
 
 void commandLastNote() {
@@ -521,7 +492,7 @@ void commandLastNote() {
       return;
     }
   }
-  digitalWrite(GATE_NOTE1, LOW);  // All notes are off
+  sr.set(GATE_NOTE1, LOW);  // All notes are off
 }
 
 void commandNote(int noteMsg) {
@@ -530,8 +501,8 @@ void commandNote(int noteMsg) {
   //sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   // outputDAC(DAC_NOTE1, sample_data);
   // outputDAC(DAC_NOTE2, sample_data);
-  digitalWrite(GATE_NOTE1, HIGH);
-  digitalWrite(TRIG_NOTE1, HIGH);
+  sr.set(GATE_NOTE1, HIGH);
+  sr.set(TRIG_NOTE1, HIGH);
   noteTrig[0] = millis();
 }
 
@@ -549,14 +520,14 @@ void commandTopNoteUni() {
   if (noteActive) {
     commandNoteUni(topNote);
   } else {  // All notes are off, turn off gate
-    digitalWrite(GATE_NOTE1, LOW);
-    digitalWrite(GATE_NOTE2, LOW);
-    digitalWrite(GATE_NOTE3, LOW);
-    digitalWrite(GATE_NOTE4, LOW);
-    digitalWrite(GATE_NOTE5, LOW);
-    digitalWrite(GATE_NOTE6, LOW);
-    digitalWrite(GATE_NOTE7, LOW);
-    digitalWrite(GATE_NOTE8, LOW);
+    sr.set(GATE_NOTE1, LOW);
+    sr.set(GATE_NOTE2, LOW);
+    sr.set(GATE_NOTE3, LOW);
+    sr.set(GATE_NOTE4, LOW);
+    sr.set(GATE_NOTE5, LOW);
+    sr.set(GATE_NOTE6, LOW);
+    sr.set(GATE_NOTE7, LOW);
+    sr.set(GATE_NOTE8, LOW);
   }
 }
 
@@ -574,14 +545,14 @@ void commandBottomNoteUni() {
   if (noteActive) {
     commandNoteUni(bottomNote);
   } else {  // All notes are off, turn off gate
-    digitalWrite(GATE_NOTE1, LOW);
-    digitalWrite(GATE_NOTE2, LOW);
-    digitalWrite(GATE_NOTE3, LOW);
-    digitalWrite(GATE_NOTE4, LOW);
-    digitalWrite(GATE_NOTE5, LOW);
-    digitalWrite(GATE_NOTE6, LOW);
-    digitalWrite(GATE_NOTE7, LOW);
-    digitalWrite(GATE_NOTE8, LOW);
+    sr.set(GATE_NOTE1, LOW);
+    sr.set(GATE_NOTE2, LOW);
+    sr.set(GATE_NOTE3, LOW);
+    sr.set(GATE_NOTE4, LOW);
+    sr.set(GATE_NOTE5, LOW);
+    sr.set(GATE_NOTE6, LOW);
+    sr.set(GATE_NOTE7, LOW);
+    sr.set(GATE_NOTE8, LOW);
   }
 }
 
@@ -596,14 +567,14 @@ void commandLastNoteUni() {
       return;
     }
   }
-  digitalWrite(GATE_NOTE1, LOW);
-  digitalWrite(GATE_NOTE2, LOW);
-  digitalWrite(GATE_NOTE3, LOW);
-  digitalWrite(GATE_NOTE4, LOW);
-  digitalWrite(GATE_NOTE5, LOW);
-  digitalWrite(GATE_NOTE6, LOW);
-  digitalWrite(GATE_NOTE7, LOW);
-  digitalWrite(GATE_NOTE8, LOW);  // All notes are off
+  sr.set(GATE_NOTE1, LOW);
+  sr.set(GATE_NOTE2, LOW);
+  sr.set(GATE_NOTE3, LOW);
+  sr.set(GATE_NOTE4, LOW);
+  sr.set(GATE_NOTE5, LOW);
+  sr.set(GATE_NOTE6, LOW);
+  sr.set(GATE_NOTE7, LOW);
+  sr.set(GATE_NOTE8, LOW);  // All notes are off
 }
 
 void commandNoteUni(int noteMsg) {
@@ -650,30 +621,30 @@ void commandNoteUni(int noteMsg) {
   // outputDAC(DAC_NOTE1, sample_data8);
   // outputDAC(DAC_NOTE2, sample_data8);
 
-  digitalWrite(TRIG_NOTE1, HIGH);
+  sr.set(TRIG_NOTE1, HIGH);
   noteTrig[0] = millis();
-  digitalWrite(GATE_NOTE1, HIGH);
-  digitalWrite(TRIG_NOTE2, HIGH);
+  sr.set(GATE_NOTE1, HIGH);
+  sr.set(TRIG_NOTE2, HIGH);
   noteTrig[1] = millis();
-  digitalWrite(GATE_NOTE2, HIGH);
-  digitalWrite(TRIG_NOTE3, HIGH);
+  sr.set(GATE_NOTE2, HIGH);
+  sr.set(TRIG_NOTE3, HIGH);
   noteTrig[2] = millis();
-  digitalWrite(GATE_NOTE3, HIGH);
-  digitalWrite(TRIG_NOTE4, HIGH);
+  sr.set(GATE_NOTE3, HIGH);
+  sr.set(TRIG_NOTE4, HIGH);
   noteTrig[3] = millis();
-  digitalWrite(GATE_NOTE4, HIGH);
-  digitalWrite(TRIG_NOTE5, HIGH);
+  sr.set(GATE_NOTE4, HIGH);
+  sr.set(TRIG_NOTE5, HIGH);
   noteTrig[4] = millis();
-  digitalWrite(GATE_NOTE5, HIGH);
-  digitalWrite(TRIG_NOTE6, HIGH);
+  sr.set(GATE_NOTE5, HIGH);
+  sr.set(TRIG_NOTE6, HIGH);
   noteTrig[5] = millis();
-  digitalWrite(GATE_NOTE6, HIGH);
-  digitalWrite(TRIG_NOTE7, HIGH);
+  sr.set(GATE_NOTE6, HIGH);
+  sr.set(TRIG_NOTE7, HIGH);
   noteTrig[6] = millis();
-  digitalWrite(GATE_NOTE7, HIGH);
-  digitalWrite(TRIG_NOTE8, HIGH);
+  sr.set(GATE_NOTE7, HIGH);
+  sr.set(TRIG_NOTE8, HIGH);
   noteTrig[7] = millis();
-  digitalWrite(GATE_NOTE8, HIGH);
+  sr.set(GATE_NOTE8, HIGH);
 }
 
 void myNoteOn(byte channel, byte note, byte velocity) {
@@ -689,8 +660,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note1 = note;
           voices[0].velocity = velocity;
           voices[0].timeOn = millis();
-          digitalWrite(GATE_NOTE1, HIGH);
-          digitalWrite(TRIG_NOTE1, HIGH);
+          sr.set(GATE_NOTE1, HIGH);
+          sr.set(TRIG_NOTE1, HIGH);
           noteTrig[0] = millis();
           voiceOn[0] = true;
           break;
@@ -700,8 +671,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note2 = note;
           voices[1].velocity = velocity;
           voices[1].timeOn = millis();
-          digitalWrite(GATE_NOTE2, HIGH);
-          digitalWrite(TRIG_NOTE2, HIGH);
+          sr.set(GATE_NOTE2, HIGH);
+          sr.set(TRIG_NOTE2, HIGH);
           noteTrig[1] = millis();
           voiceOn[1] = true;
           break;
@@ -711,8 +682,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note3 = note;
           voices[2].velocity = velocity;
           voices[2].timeOn = millis();
-          digitalWrite(GATE_NOTE3, HIGH);
-          digitalWrite(TRIG_NOTE3, HIGH);
+          sr.set(GATE_NOTE3, HIGH);
+          sr.set(TRIG_NOTE3, HIGH);
           noteTrig[2] = millis();
           voiceOn[2] = true;
           break;
@@ -722,8 +693,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note4 = note;
           voices[3].velocity = velocity;
           voices[3].timeOn = millis();
-          digitalWrite(GATE_NOTE4, HIGH);
-          digitalWrite(TRIG_NOTE4, HIGH);
+          sr.set(GATE_NOTE4, HIGH);
+          sr.set(TRIG_NOTE4, HIGH);
           noteTrig[3] = millis();
           voiceOn[3] = true;
           break;
@@ -733,8 +704,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note5 = note;
           voices[4].velocity = velocity;
           voices[4].timeOn = millis();
-          digitalWrite(GATE_NOTE5, HIGH);
-          digitalWrite(TRIG_NOTE5, HIGH);
+          sr.set(GATE_NOTE5, HIGH);
+          sr.set(TRIG_NOTE5, HIGH);
           noteTrig[4] = millis();
           voiceOn[4] = true;
           break;
@@ -744,8 +715,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note6 = note;
           voices[5].velocity = velocity;
           voices[5].timeOn = millis();
-          digitalWrite(GATE_NOTE6, HIGH);
-          digitalWrite(TRIG_NOTE6, HIGH);
+          sr.set(GATE_NOTE6, HIGH);
+          sr.set(TRIG_NOTE6, HIGH);
           noteTrig[5] = millis();
           voiceOn[5] = true;
           break;
@@ -755,8 +726,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note7 = note;
           voices[6].velocity = velocity;
           voices[6].timeOn = millis();
-          digitalWrite(GATE_NOTE7, HIGH);
-          digitalWrite(TRIG_NOTE7, HIGH);
+          sr.set(GATE_NOTE7, HIGH);
+          sr.set(TRIG_NOTE7, HIGH);
           noteTrig[6] = millis();
           voiceOn[6] = true;
           break;
@@ -766,8 +737,8 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note8 = note;
           voices[7].velocity = velocity;
           voices[7].timeOn = millis();
-          digitalWrite(GATE_NOTE8, HIGH);
-          digitalWrite(TRIG_NOTE8, HIGH);
+          sr.set(GATE_NOTE8, HIGH);
+          sr.set(TRIG_NOTE8, HIGH);
           noteTrig[7] = millis();
           voiceOn[7] = true;
           break;
@@ -863,42 +834,42 @@ void myNoteOff(byte channel, byte note, byte velocity) {
     case 0:
       switch (getVoiceNo(note)) {
         case 1:
-          digitalWrite(GATE_NOTE1, LOW);
+          sr.set(GATE_NOTE1, LOW);
           voices[0].note = -1;
           voiceOn[0] = false;
           break;
         case 2:
-          digitalWrite(GATE_NOTE2, LOW);
+          sr.set(GATE_NOTE2, LOW);
           voices[1].note = -1;
           voiceOn[1] = false;
           break;
         case 3:
-          digitalWrite(GATE_NOTE3, LOW);
+          sr.set(GATE_NOTE3, LOW);
           voices[2].note = -1;
           voiceOn[2] = false;
           break;
         case 4:
-          digitalWrite(GATE_NOTE4, LOW);
+          sr.set(GATE_NOTE4, LOW);
           voices[3].note = -1;
           voiceOn[3] = false;
           break;
         case 5:
-          digitalWrite(GATE_NOTE5, LOW);
+          sr.set(GATE_NOTE5, LOW);
           voices[4].note = -1;
           voiceOn[4] = false;
           break;
         case 6:
-          digitalWrite(GATE_NOTE6, LOW);
+          sr.set(GATE_NOTE6, LOW);
           voices[5].note = -1;
           voiceOn[5] = false;
           break;
         case 7:
-          digitalWrite(GATE_NOTE7, LOW);
+          sr.set(GATE_NOTE7, LOW);
           voices[6].note = -1;
           voiceOn[6] = false;
           break;
         case 8:
-          digitalWrite(GATE_NOTE8, LOW);
+          sr.set(GATE_NOTE8, LOW);
           voices[7].note = -1;
           voiceOn[7] = false;
           break;
@@ -1010,35 +981,35 @@ int getVoiceNo(int note) {
 void updateTimers() {
 
   if (millis() > noteTrig[0] + trigTimeout) {
-    digitalWrite(TRIG_NOTE1, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE1, LOW);  // Set trigger low after 20 msec
   }
 
   if (millis() > noteTrig[1] + trigTimeout) {
-    digitalWrite(TRIG_NOTE2, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE2, LOW);  // Set trigger low after 20 msec
   }
 
   if (millis() > noteTrig[2] + trigTimeout) {
-    digitalWrite(TRIG_NOTE3, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE3, LOW);  // Set trigger low after 20 msec
   }
 
   if (millis() > noteTrig[3] + trigTimeout) {
-    digitalWrite(TRIG_NOTE4, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE4, LOW);  // Set trigger low after 20 msec
   }
 
   if (millis() > noteTrig[4] + trigTimeout) {
-    digitalWrite(TRIG_NOTE5, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE5, LOW);  // Set trigger low after 20 msec
   }
 
   if (millis() > noteTrig[5] + trigTimeout) {
-    digitalWrite(TRIG_NOTE6, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE6, LOW);  // Set trigger low after 20 msec
   }
 
   if (millis() > noteTrig[6] + trigTimeout) {
-    digitalWrite(TRIG_NOTE7, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE7, LOW);  // Set trigger low after 20 msec
   }
 
   if (millis() > noteTrig[7] + trigTimeout) {
-    digitalWrite(TRIG_NOTE8, LOW);  // Set trigger low after 20 msec
+    sr.set(TRIG_NOTE8, LOW);  // Set trigger low after 20 msec
   }
 }
 
@@ -1147,14 +1118,14 @@ void updateVoice8() {
 }
 
 void allNotesOff() {
-  digitalWrite(GATE_NOTE1, LOW);
-  digitalWrite(GATE_NOTE2, LOW);
-  digitalWrite(GATE_NOTE3, LOW);
-  digitalWrite(GATE_NOTE4, LOW);
-  digitalWrite(GATE_NOTE5, LOW);
-  digitalWrite(GATE_NOTE6, LOW);
-  digitalWrite(GATE_NOTE7, LOW);
-  digitalWrite(GATE_NOTE7, LOW);
+  sr.set(GATE_NOTE1, LOW);
+  sr.set(GATE_NOTE2, LOW);
+  sr.set(GATE_NOTE3, LOW);
+  sr.set(GATE_NOTE4, LOW);
+  sr.set(GATE_NOTE5, LOW);
+  sr.set(GATE_NOTE6, LOW);
+  sr.set(GATE_NOTE7, LOW);
+  sr.set(GATE_NOTE7, LOW);
 
   voices[0].note = -1;
   voices[1].note = -1;
