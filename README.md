@@ -18,7 +18,7 @@ The triggers and gates are currently +5v.
 
 8 trigger outputs
 
-Pitchbend and CC outputs
+Pitchbend, channel aftertouch and CC outputs
 
 MIDI Channel selection or Omni
 
