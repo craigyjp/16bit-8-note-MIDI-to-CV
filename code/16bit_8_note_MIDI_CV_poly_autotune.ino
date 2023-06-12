@@ -1,7 +1,7 @@
 /*
       8 note Poly MIDI to CV
 
-      Version 3
+      Version 5
 
       Copyright (C) 2020 Craig Barnes
 
@@ -45,6 +45,12 @@
 #define FM_INPUT A10
 float FM_VALUE = 0.0f;
 float TM_VALUE = 0.0f;
+int FM_RANGE_UPPER = 0;
+int FM_RANGE_LOWER = 0;
+float MOD_WHEEL = 0.00f;
+float AT_WHEEL = 0.00f;
+int BEND_WHEEL = 0;
+int TM_RANGE = 0;
 
 //Autotune MUX
 
@@ -80,6 +86,10 @@ float TM_VALUE = 0.0f;
 #define ENC_A 0
 #define ENC_B 1
 #define ENC_BTN 2
+
+#define MOD_DEPTH A14
+#define AT_DEPTH A15
+#define PB_DEPTH A16
 
 // Scale Factor will generate 0.5v/octave
 // 4 octave keyboard on a 3.3v powered DAC
@@ -368,6 +378,8 @@ void setup() {
   outputDAC(DAC_NOTE5, sample_data);
   sample_data = ((channel_b & 0xFFF0000F) | (0 & 0xFFFF) << 4);
   outputDAC(DAC_NOTE5, sample_data);
+  sample_data = ((channel_c & 0xFFF0000F) | (17018 & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE5, sample_data);
 
   menu = SETTINGS;
   updateSelection();
@@ -376,75 +388,40 @@ void setup() {
 void myPitchBend(byte channel, int bend) {
   if ((channel == masterChan) || (masterChan == 0)) {
     bend_data = int(bend * 0.395);
-    // sample_data = (channel_a & 0xFFF0000F) | (((int(bend * 0.395) + 13180) & 0xFFFF) << 4);
-    // outputDAC(DAC_NOTE5, sample_data);
+    sample_data = (channel_a & 0xFFF0000F) | (((int(bend * 0.395) + 13180) & 0xFFFF) << 4);
+    outputDAC(DAC_NOTE5, sample_data);
   }
 }
 
 void myControlChange(byte channel, byte number, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
     if (number == 1) {
-      sample_data = (channel_c & 0xFFF0000F) | (((int(value * 134)) & 0xFFFF) << 4);
-      outputDAC(DAC_NOTE5, sample_data);
+      FM_RANGE_UPPER = int(value * MOD_WHEEL);
+      FM_RANGE_LOWER = (FM_RANGE_UPPER - FM_RANGE_UPPER - FM_RANGE_UPPER);
     }
   }
 }
 
 void myAfterTouch(byte channel, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
-    sample_data = (channel_c & 0xFFF0000F) | (((int(value * 134)) & 0xFFFF) << 4);
-    outputDAC(DAC_NOTE5, sample_data);
+    FM_RANGE_UPPER = int(value * AT_WHEEL);
+    FM_RANGE_LOWER = (FM_RANGE_UPPER - FM_RANGE_UPPER - FM_RANGE_UPPER);
   }
-  // switch (afterTouchDepth) {
-  //   case 0:
-  //     modulation = 0;
-  //     break;
-
-  //   case 1:
-  //     modulation = int(newvalue / 5);
-  //     break;
-
-  //   case 2:
-  //     modulation = int(newvalue / 4);
-  //     break;
-
-  //   case 3:
-  //     modulation = int(newvalue / 3.5);
-  //     break;
-
-  //   case 4:
-  //     modulation = int(newvalue / 3);
-  //     break;
-
-  //   case 5:
-  //     modulation = int(newvalue / 2.5);
-  //     break;
-
-  //   case 6:
-  //     modulation = int(newvalue / 2);
-  //     break;
-
-  //   case 7:
-  //     modulation = int(newvalue / 1.75);
-  //     break;
-
-  //   case 8:
-  //     modulation = int(newvalue / 1.5);
-  //     break;
-
-  //   case 9:
-  //     modulation = int(newvalue / 1.25);
-  //     break;
-
-  //   case 10:
-  //     modulation = int(newvalue);
-  //     break;
-  // }
 }
 
-void fm_task() {
+void mod_task() {
+
   FM_VALUE = analogRead(FM_INPUT);
-  FM_VALUE = map(FM_VALUE, 0, 4095, -2048, 2048);
+  FM_VALUE = map(FM_VALUE, 0, 4095, FM_RANGE_LOWER, FM_RANGE_UPPER);
+
+  MOD_WHEEL = analogRead(MOD_DEPTH);
+  MOD_WHEEL = map(MOD_WHEEL, 0, 4095, 0, 16.12);
+
+  AT_WHEEL = analogRead(AT_DEPTH);
+  AT_WHEEL = map(AT_WHEEL, 0, 4095, 0, 16.12);
+
+  BEND_WHEEL = analogRead(PB_DEPTH);
+  BEND_WHEEL = map(BEND_WHEEL, 0, 4095, 0, 12);
 }
 
 void commandTopNote() {
@@ -497,10 +474,6 @@ void commandLastNote() {
 
 void commandNote(int noteMsg) {
   note1 = noteMsg;
-  //unsigned int mV = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5);
-  //sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data);
-  // outputDAC(DAC_NOTE2, sample_data);
   sr.set(GATE_NOTE1, HIGH);
   sr.set(TRIG_NOTE1, HIGH);
   noteTrig[0] = millis();
@@ -587,39 +560,6 @@ void commandNoteUni(int noteMsg) {
   note6 = noteMsg;
   note7 = noteMsg;
   note8 = noteMsg;
-
-  //unsigned int mV1 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5);
-  //sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV1)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data1);
-  // outputDAC(DAC_NOTE2, sample_data1);
-  //unsigned int mV2 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5);
-  //sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV2)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data2);
-  // outputDAC(DAC_NOTE2, sample_data2);
-  //unsigned int mV3 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5);
-  //sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV3)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data3);
-  // outputDAC(DAC_NOTE2, sample_data3);
-  //unsigned int mV4 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5);
-  //sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV4)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data4);
-  // outputDAC(DAC_NOTE2, sample_data4);
-  //unsigned int mV5 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5);
-  //sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV5)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data5);
-  // outputDAC(DAC_NOTE2, sample_data5);
-  //unsigned int mV6 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5);
-  //sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV6)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data6);
-  // outputDAC(DAC_NOTE2, sample_data6);
-  //unsigned int mV7 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5);
-  //sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV7)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data7);
-  // outputDAC(DAC_NOTE2, sample_data7);
-  //unsigned int mV8 = (unsigned int)((float)(noteMsg + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5);
-  //sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV8)) & 0xFFFF) << 4);
-  // outputDAC(DAC_NOTE1, sample_data8);
-  // outputDAC(DAC_NOTE2, sample_data8);
 
   sr.set(TRIG_NOTE1, HIGH);
   noteTrig[0] = millis();
@@ -1151,32 +1091,32 @@ void onButtonPress(uint16_t btnIndex, uint8_t btnType) {
   if (btnIndex == ENC_A && btnType == ROX_PRESSED) {
     static int encoderA, encoderB, encoderA_prev;
 
-      if (highlightEnabled) {              // Update encoder position
-        encoderPosPrev = encoderPos;
-        encoderB ? encoderPos++ : encoderPos--;
-      } else {
-        highlightEnabled = true;
-        encoderPos = 0;  // Reset encoder position if highlight timed out
-        encoderPosPrev = 0;
-      }
-      highlightTimer = millis();
-      updateSelection();
+    if (highlightEnabled) {  // Update encoder position
+      encoderPosPrev = encoderPos;
+      encoderB ? encoderPos++ : encoderPos--;
+    } else {
+      highlightEnabled = true;
+      encoderPos = 0;  // Reset encoder position if highlight timed out
+      encoderPosPrev = 0;
+    }
+    highlightTimer = millis();
+    updateSelection();
     encoderA_prev = encoderA;
   }
 
   if (btnIndex == ENC_B && btnType == ROX_PRESSED) {
     static int encoderA, encoderB, encoderB_prev;
 
-      if (highlightEnabled) {              // Update encoder position
-        encoderPosPrev = encoderPos;
-        encoderA ? encoderPos-- : encoderPos++;
-      } else {
-        highlightEnabled = true;
-        encoderPos = 0;  // Reset encoder position if highlight timed out
-        encoderPosPrev = 0;
-      }
-      highlightTimer = millis();
-      updateSelection();
+    if (highlightEnabled) {  // Update encoder position
+      encoderPosPrev = encoderPos;
+      encoderA ? encoderPos-- : encoderPos++;
+    } else {
+      highlightEnabled = true;
+      encoderPos = 0;  // Reset encoder position if highlight timed out
+      encoderPosPrev = 0;
+    }
+    highlightTimer = millis();
+    updateSelection();
     encoderB_prev = encoderB;
   }
 
@@ -1203,7 +1143,7 @@ void loop() {
   midi1.read(masterChan);    //USB HOST MIDI Class Compliant
   MIDI.read(masterChan);     //MIDI 5 Pin DIN
   usbMIDI.read(masterChan);  //USB Client MIDI
-  fm_task();
+  mod_task();
   updateVoice1();
   updateVoice2();
   updateVoice3();
@@ -1223,47 +1163,6 @@ void outputDAC(int CHIP_SELECT, uint32_t sample_data) {
   digitalWrite(CHIP_SELECT, HIGH);
   SPI.endTransaction();
 }
-
-
-// void updateEncoderPos() {
-//   static int encoderA, encoderB, encoderA_prev;
-
-//   encoderA = digitalRead(ENC_A);
-
-//   if ((!encoderA) && (encoderA_prev)) {  // A has gone from high to low
-//     if (highlightEnabled) {              // Update encoder position
-//       encoderPosPrev = encoderPos;
-//       encoderB ? encoderPos++ : encoderPos--;
-//     } else {
-//       highlightEnabled = true;
-//       encoderPos = 0;  // Reset encoder position if highlight timed out
-//       encoderPosPrev = 0;
-//     }
-//     highlightTimer = millis();
-//     updateSelection();
-//   }
-//   encoderA_prev = encoderA;
-// }
-
-// void updateEncoderPosB() {
-//   static int encoderA, encoderB, encoderB_prev;
-
-//   encoderB = digitalRead(ENC_B);
-
-//   if ((!encoderB) && (encoderB_prev)) {  // A has gone from high to low
-//     if (highlightEnabled) {              // Update encoder position
-//       encoderPosPrev = encoderPos;
-//       encoderA ? encoderPos-- : encoderPos++;
-//     } else {
-//       highlightEnabled = true;
-//       encoderPos = 0;  // Reset encoder position if highlight timed out
-//       encoderPosPrev = 0;
-//     }
-//     highlightTimer = millis();
-//     updateSelection();
-//   }
-//   encoderB_prev = encoderB;
-// }
 
 int setCh;
 char setMode[6];
