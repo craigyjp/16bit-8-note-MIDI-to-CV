@@ -48,13 +48,13 @@ float TM_VALUE = 0.0f;
 
 //Autotune MUX
 
-// #define MUX_S0 10
-// #define MUX_S1 24
-// #define MUX_S2 25
-// #define MUX_S3 26
+#define MUX_S0 33
+#define MUX_S1 34
+#define MUX_S2 35
+#define MUX_S3 36
 
-//#define MUX_ENABLE 3
-//#define MUX_OUT 4
+#define MUX_ENABLE 37
+#define TUNE_INPUT 2
 
 //Trig outputs
 #define TRIG_NOTE1 16
@@ -230,24 +230,24 @@ void setup() {
   pinMode(DAC_NOTE3, OUTPUT);
   pinMode(DAC_NOTE4, OUTPUT);
   pinMode(DAC_NOTE5, OUTPUT);
-  // pinMode(MUX_S0, OUTPUT);
-  // pinMode(MUX_S1, OUTPUT);
-  // pinMode(MUX_S2, OUTPUT);
-  // pinMode(MUX_S3, OUTPUT);
+  pinMode(MUX_S0, OUTPUT);
+  pinMode(MUX_S1, OUTPUT);
+  pinMode(MUX_S2, OUTPUT);
+  pinMode(MUX_S3, OUTPUT);
 
-  // pinMode(MUX_OUT, INPUT);
-  // pinMode(MUX_ENABLE, OUTPUT);
+  pinMode(TUNE_INPUT, INPUT);
+  pinMode(MUX_ENABLE, OUTPUT);
 
   digitalWrite(DAC_NOTE1, HIGH);
   digitalWrite(DAC_NOTE2, HIGH);
   digitalWrite(DAC_NOTE3, HIGH);
   digitalWrite(DAC_NOTE4, HIGH);
   digitalWrite(DAC_NOTE5, HIGH);
-  // digitalWrite(MUX_S0, LOW);
-  // digitalWrite(MUX_S1, LOW);
-  // digitalWrite(MUX_S2, LOW);
-  // digitalWrite(MUX_S3, LOW);
-  // digitalWrite(MUX_ENABLE, LOW);
+  digitalWrite(MUX_S0, LOW);
+  digitalWrite(MUX_S1, LOW);
+  digitalWrite(MUX_S2, LOW);
+  digitalWrite(MUX_S3, LOW);
+  digitalWrite(MUX_ENABLE, LOW);
 
   SPI.begin();
   octoswitch.begin(PIN_DATA, PIN_LOAD, PIN_CLK);
