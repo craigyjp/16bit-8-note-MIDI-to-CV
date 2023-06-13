@@ -20,6 +20,8 @@ The triggers and gates are currently +5v.
 
 Pitchbend, channel aftertouch and CC outputs
 
+Sustain pedal support over MIDI
+
 MIDI Channel selection or Omni
 
 Poly/Unison/Mono modes with note modes
