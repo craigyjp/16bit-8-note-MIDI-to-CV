@@ -129,6 +129,9 @@ int octave;
 int realoctave;
 int bend_data;
 int note1, note2, note3, note4, note5, note6, note7, note8;
+int numPlayingVoices = 0;
+bool sustainOn = false; 
+byte sendnote, sendvelocity;
 
 unsigned int velmV;
 
@@ -140,17 +143,22 @@ struct VoiceAndNote {
   int note;
   int velocity;
   long timeOn;
+  bool sustained;   // Sustain flag
+  bool keyDown;
+  double noteFreq;   // Note frequency
+  int position;
+  bool noteOn; 
 };
 
 struct VoiceAndNote voices[NO_OF_VOICES] = {
-  { -1, -1, 0 },
-  { -1, -1, 0 },
-  { -1, -1, 0 },
-  { -1, -1, 0 },
-  { -1, -1, 0 },
-  { -1, -1, 0 },
-  { -1, -1, 0 },
-  { -1, -1, 0 }
+  { -1, -1, 0, false, false, 0, -1, false },
+  { -1, -1, 0, false, false, 0, -1, false },
+  { -1, -1, 0, false, false, 0, -1, false },
+  { -1, -1, 0, false, false, 0, -1, false },
+  { -1, -1, 0, false, false, 0, -1, false },
+  { -1, -1, 0, false, false, 0, -1, false },
+  { -1, -1, 0, false, false, 0, -1, false },
+  { -1, -1, 0, false, false, 0, -1, false }
 };
 
 boolean voiceOn[NO_OF_VOICES] = { false, false, false, false, false, false, false, false };
@@ -395,9 +403,22 @@ void myPitchBend(byte channel, int bend) {
 
 void myControlChange(byte channel, byte number, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
-    if (number == 1) {
-      FM_RANGE_UPPER = int(value * MOD_WHEEL);
-      FM_RANGE_LOWER = (FM_RANGE_UPPER - FM_RANGE_UPPER - FM_RANGE_UPPER);
+    switch (number) {
+
+      case 1:
+        FM_RANGE_UPPER = int(value * MOD_WHEEL);
+        FM_RANGE_LOWER = (FM_RANGE_UPPER - FM_RANGE_UPPER - FM_RANGE_UPPER);
+        break;
+
+      case 64:
+        if (value > 63) {
+          sustainOn = true;
+          sustainNotes();
+        } else {
+          sustainOn = false;
+          unsustainNotes();
+        }
+        break;
     }
   }
 }
@@ -422,6 +443,26 @@ void mod_task() {
 
   BEND_WHEEL = analogRead(PB_DEPTH);
   BEND_WHEEL = map(BEND_WHEEL, 0, 4095, 0, 12);
+}
+
+void unsustainNotes() {   // Unsustain notes
+  for (int i = 0; i < NO_OF_VOICES; i++) {
+    if (voices[i].keyDown) {
+    voices[i].sustained = false;
+    sendnote = voices[i].note;
+    sendvelocity = voices[i].velocity;
+    myNoteOff(masterChan, sendnote, sendvelocity);
+    }
+    
+  }
+}
+
+void sustainNotes() {   // Sustain notes
+  for (int i = 0; i < NO_OF_VOICES; i++) {
+    if (voiceOn[i]) {
+      voices[i].sustained = true;
+    }
+  }
 }
 
 void commandTopNote() {
@@ -600,6 +641,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note1 = note;
           voices[0].velocity = velocity;
           voices[0].timeOn = millis();
+          voices[0].keyDown = true;
           sr.set(GATE_NOTE1, HIGH);
           sr.set(TRIG_NOTE1, HIGH);
           noteTrig[0] = millis();
@@ -611,6 +653,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note2 = note;
           voices[1].velocity = velocity;
           voices[1].timeOn = millis();
+          voices[1].keyDown = true;
           sr.set(GATE_NOTE2, HIGH);
           sr.set(TRIG_NOTE2, HIGH);
           noteTrig[1] = millis();
@@ -622,6 +665,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note3 = note;
           voices[2].velocity = velocity;
           voices[2].timeOn = millis();
+          voices[2].keyDown = true;
           sr.set(GATE_NOTE3, HIGH);
           sr.set(TRIG_NOTE3, HIGH);
           noteTrig[2] = millis();
@@ -633,6 +677,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note4 = note;
           voices[3].velocity = velocity;
           voices[3].timeOn = millis();
+          voices[3].keyDown = true;
           sr.set(GATE_NOTE4, HIGH);
           sr.set(TRIG_NOTE4, HIGH);
           noteTrig[3] = millis();
@@ -644,6 +689,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note5 = note;
           voices[4].velocity = velocity;
           voices[4].timeOn = millis();
+          voices[4].keyDown = true;
           sr.set(GATE_NOTE5, HIGH);
           sr.set(TRIG_NOTE5, HIGH);
           noteTrig[4] = millis();
@@ -655,6 +701,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note6 = note;
           voices[5].velocity = velocity;
           voices[5].timeOn = millis();
+          voices[5].keyDown = true;
           sr.set(GATE_NOTE6, HIGH);
           sr.set(TRIG_NOTE6, HIGH);
           noteTrig[5] = millis();
@@ -666,6 +713,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note7 = note;
           voices[6].velocity = velocity;
           voices[6].timeOn = millis();
+          voices[6].keyDown = true;
           sr.set(GATE_NOTE7, HIGH);
           sr.set(TRIG_NOTE7, HIGH);
           noteTrig[6] = millis();
@@ -677,6 +725,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
           note8 = note;
           voices[7].velocity = velocity;
           voices[7].timeOn = millis();
+          voices[7].keyDown = true;
           sr.set(GATE_NOTE8, HIGH);
           sr.set(TRIG_NOTE8, HIGH);
           noteTrig[7] = millis();
@@ -774,44 +823,68 @@ void myNoteOff(byte channel, byte note, byte velocity) {
     case 0:
       switch (getVoiceNo(note)) {
         case 1:
+          if (!voices[0].sustained) {
           sr.set(GATE_NOTE1, LOW);
           voices[0].note = -1;
           voiceOn[0] = false;
+          voices[0].keyDown = false;
+          }
           break;
         case 2:
+          if (!voices[1].sustained) {
           sr.set(GATE_NOTE2, LOW);
           voices[1].note = -1;
           voiceOn[1] = false;
+          voices[1].keyDown = false;
+          }
           break;
         case 3:
+          if (!voices[2].sustained) {
           sr.set(GATE_NOTE3, LOW);
           voices[2].note = -1;
           voiceOn[2] = false;
+          voices[2].keyDown = false;
+          }
           break;
         case 4:
+          if (!voices[3].sustained) {
           sr.set(GATE_NOTE4, LOW);
           voices[3].note = -1;
           voiceOn[3] = false;
+          voices[3].keyDown = false;
+          }
           break;
         case 5:
+          if (!voices[4].sustained) {
           sr.set(GATE_NOTE5, LOW);
           voices[4].note = -1;
           voiceOn[4] = false;
+          voices[4].keyDown = false;
+          }
           break;
         case 6:
+          if (!voices[5].sustained) {
           sr.set(GATE_NOTE6, LOW);
           voices[5].note = -1;
           voiceOn[5] = false;
+          voices[5].keyDown = false;
+          }
           break;
         case 7:
+          if (!voices[6].sustained) {
           sr.set(GATE_NOTE7, LOW);
           voices[6].note = -1;
           voiceOn[6] = false;
+          voices[6].keyDown = false;
+          }
           break;
         case 8:
+          if (!voices[7].sustained) {
           sr.set(GATE_NOTE8, LOW);
           voices[7].note = -1;
           voiceOn[7] = false;
+          voices[7].keyDown = false;
+          }
           break;
       }
       break;
