@@ -28,73 +28,10 @@
 #include <USBHost_t36.h>
 #include <RoxMux.h>
 #include <ShiftRegister74HC595.h>
+#include "Parameters.h"
+#include "Hardware.h"
 
 // OLED I2C is used on pins 18 and 19 for Teensy 3.x
-
-// Voices available
-#define NO_OF_VOICES 8
-#define trigTimeout 20
-
-//Note DACS
-#define DAC_NOTE1 7
-#define DAC_NOTE2 8
-#define DAC_NOTE3 9
-#define DAC_NOTE4 6
-#define DAC_NOTE5 10
-
-#define FM_INPUT A10
-float FM_VALUE = 0.0f;
-float TM_VALUE = 0.0f;
-int FM_RANGE_UPPER = 0;
-int FM_RANGE_LOWER = 0;
-float MOD_WHEEL = 0.00f;
-float AT_WHEEL = 0.00f;
-int BEND_WHEEL = 0;
-int TM_RANGE = 0;
-
-//Autotune MUX
-
-#define MUX_S0 33
-#define MUX_S1 34
-#define MUX_S2 35
-#define MUX_S3 36
-
-#define MUX_ENABLE 37
-#define TUNE_INPUT 2
-
-//Trig outputs
-#define TRIG_NOTE1 16
-#define TRIG_NOTE2 17
-#define TRIG_NOTE3 18
-#define TRIG_NOTE4 19
-#define TRIG_NOTE5 20
-#define TRIG_NOTE6 21
-#define TRIG_NOTE7 22
-#define TRIG_NOTE8 23
-
-//Gate outputs
-#define GATE_NOTE1 0
-#define GATE_NOTE2 1
-#define GATE_NOTE3 2
-#define GATE_NOTE4 3
-#define GATE_NOTE5 4
-#define GATE_NOTE6 5
-#define GATE_NOTE7 6
-#define GATE_NOTE8 7
-
-//Encoder or buttons
-#define ENC_A 0
-#define ENC_B 1
-#define ENC_BTN 2
-
-#define MOD_DEPTH A14
-#define AT_DEPTH A15
-#define PB_DEPTH A16
-
-// Scale Factor will generate 0.5v/octave
-// 4 octave keyboard on a 3.3v powered DAC
-#define NOTE_SF 273.50f
-#define VEL_SF 256.0
 
 #define OLED_RESET 17
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
@@ -115,39 +52,15 @@ enum Menu {
 
 char gateTrig[] = "TTTTTTT";
 
-
-float sfAdj[8];
-
-int masterChan;
-int masterTran;
-int previousMode;
-int transpose;
-int8_t d2, i;
-int noteMsg;
-int keyboardMode;
-int octave;
-int realoctave;
-int bend_data;
-int note1, note2, note3, note4, note5, note6, note7, note8;
-int numPlayingVoices = 0;
-bool sustainOn = false; 
-byte sendnote, sendvelocity;
-
-unsigned int velmV;
-
-float noteTrig[8];
-float monoTrig;
-float unisonTrig;
-
 struct VoiceAndNote {
   int note;
   int velocity;
   long timeOn;
-  bool sustained;   // Sustain flag
+  bool sustained;  // Sustain flag
   bool keyDown;
-  double noteFreq;   // Note frequency
+  double noteFreq;  // Note frequency
   int position;
-  bool noteOn; 
+  bool noteOn;
 };
 
 struct VoiceAndNote voices[NO_OF_VOICES] = {
@@ -180,55 +93,6 @@ MIDIDevice midi1(myusb);
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI);
 const int channel = 1;
 
-// EEPROM Addresses
-
-#define ADDR_GATE_TRIG 0  // (0-7)
-#define ADDR_PITCH_BEND 8
-#define ADDR_CC 9
-#define ADDR_SF_ADJUST 10  // (10-17)
-#define ADDR_MASTER_CHAN 18
-#define ADDR_TRANSPOSE 19
-#define ADDR_REAL_TRANSPOSE 20
-#define ADDR_OCTAVE 21
-#define ADDR_REALOCTAVE 22
-#define ADDR_KEYBOARD_MODE 23
-
-
-uint32_t int_ref_on_flexible_mode = 0b00001001000010100000000000000000;  // { 0000 , 1001 , 0000 , 1010000000000000 , 0000 }
-
-uint32_t sample_data = 0b00000000000000000000000000000000;
-
-uint32_t sample_data1 = 0b00000000000000000000000000000000;
-uint32_t sample_data2 = 0b00000000000000000000000000000000;
-uint32_t sample_data3 = 0b00000000000000000000000000000000;
-uint32_t sample_data4 = 0b00000000000000000000000000000000;
-uint32_t sample_data5 = 0b00000000000000000000000000000000;
-uint32_t sample_data6 = 0b00000000000000000000000000000000;
-uint32_t sample_data7 = 0b00000000000000000000000000000000;
-uint32_t sample_data8 = 0b00000000000000000000000000000000;
-
-uint32_t vel_data1 = 0b00000000000000000000000000000000;
-uint32_t vel_data2 = 0b00000000000000000000000000000000;
-uint32_t vel_data3 = 0b00000000000000000000000000000000;
-uint32_t vel_data4 = 0b00000000000000000000000000000000;
-uint32_t vel_data5 = 0b00000000000000000000000000000000;
-uint32_t vel_data6 = 0b00000000000000000000000000000000;
-uint32_t vel_data7 = 0b00000000000000000000000000000000;
-uint32_t vel_data8 = 0b00000000000000000000000000000000;
-
-uint32_t channel_a = 0b00000010000000000000000000000000;
-uint32_t channel_b = 0b00000010000100000000000000000000;
-uint32_t channel_c = 0b00000010001000000000000000000000;
-uint32_t channel_d = 0b00000010001100000000000000000000;
-uint32_t channel_e = 0b00000010010000000000000000000000;
-uint32_t channel_f = 0b00000010010100000000000000000000;
-uint32_t channel_g = 0b00000010011000000000000000000000;
-uint32_t channel_h = 0b00000010011100000000000000000000;
-
-bool highlightEnabled = false;   // Flag indicating whether highighting should be enabled on menu
-#define HIGHLIGHT_TIMEOUT 20000  // Highlight disappears after 20 seconds.  Timer resets whenever encoder turned or button pushed
-unsigned long int highlightTimer = 0;
-
 #define OCTO_TOTAL 2
 #define BTN_DEBOUNCE 50
 RoxOctoswitch<OCTO_TOTAL, BTN_DEBOUNCE> octoswitch;
@@ -241,70 +105,14 @@ ShiftRegister74HC595<3> sr(30, 31, 32);
 
 void setup() {
 
-  analogReadResolution(12);
-
-  pinMode(DAC_NOTE1, OUTPUT);
-  pinMode(DAC_NOTE2, OUTPUT);
-  pinMode(DAC_NOTE3, OUTPUT);
-  pinMode(DAC_NOTE4, OUTPUT);
-  pinMode(DAC_NOTE5, OUTPUT);
-  pinMode(MUX_S0, OUTPUT);
-  pinMode(MUX_S1, OUTPUT);
-  pinMode(MUX_S2, OUTPUT);
-  pinMode(MUX_S3, OUTPUT);
-
-  pinMode(TUNE_INPUT, INPUT);
-  pinMode(MUX_ENABLE, OUTPUT);
-
-  digitalWrite(DAC_NOTE1, HIGH);
-  digitalWrite(DAC_NOTE2, HIGH);
-  digitalWrite(DAC_NOTE3, HIGH);
-  digitalWrite(DAC_NOTE4, HIGH);
-  digitalWrite(DAC_NOTE5, HIGH);
-  digitalWrite(MUX_S0, LOW);
-  digitalWrite(MUX_S1, LOW);
-  digitalWrite(MUX_S2, LOW);
-  digitalWrite(MUX_S3, LOW);
-  digitalWrite(MUX_ENABLE, LOW);
-
   SPI.begin();
+
+  setupHardware();
+
   octoswitch.begin(PIN_DATA, PIN_LOAD, PIN_CLK);
   octoswitch.setCallback(onButtonPress);
 
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
-  digitalWrite(DAC_NOTE1, LOW);
-  SPI.transfer32(int_ref_on_flexible_mode);
-  delayMicroseconds(1);
-  digitalWrite(DAC_NOTE1, HIGH);
-  SPI.endTransaction();
 
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
-  digitalWrite(DAC_NOTE2, LOW);
-  SPI.transfer32(int_ref_on_flexible_mode);
-  delayMicroseconds(1);
-  digitalWrite(DAC_NOTE2, HIGH);
-  SPI.endTransaction();
-
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
-  digitalWrite(DAC_NOTE3, LOW);
-  SPI.transfer32(int_ref_on_flexible_mode);
-  delayMicroseconds(1);
-  digitalWrite(DAC_NOTE3, HIGH);
-  SPI.endTransaction();
-
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
-  digitalWrite(DAC_NOTE4, LOW);
-  SPI.transfer32(int_ref_on_flexible_mode);
-  delayMicroseconds(1);
-  digitalWrite(DAC_NOTE4, HIGH);
-  SPI.endTransaction();
-
-  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
-  digitalWrite(DAC_NOTE5, LOW);
-  SPI.transfer32(int_ref_on_flexible_mode);
-  delayMicroseconds(1);
-  digitalWrite(DAC_NOTE5, HIGH);
-  SPI.endTransaction();
 
   //USB HOST MIDI Class Compliant
   delay(300);  //Wait to turn on USB Host
@@ -378,19 +186,9 @@ void setup() {
     EEPROM.write(ADDR_OCTAVE, octave);
   }
 
-
-  // encButton.attach(ENC_BTN);
-  // encButton.interval(5);  // interval in ms
-
-  sample_data = ((channel_a & 0xFFF0000F) | (13180 & 0xFFFF) << 4);
-  outputDAC(DAC_NOTE5, sample_data);
-  sample_data = ((channel_b & 0xFFF0000F) | (0 & 0xFFFF) << 4);
-  outputDAC(DAC_NOTE5, sample_data);
-  sample_data = ((channel_c & 0xFFF0000F) | (17018 & 0xFFFF) << 4);
-  outputDAC(DAC_NOTE5, sample_data);
-
   menu = SETTINGS;
   updateSelection();
+
 }
 
 void myPitchBend(byte channel, int bend) {
@@ -425,39 +223,73 @@ void myControlChange(byte channel, byte number, byte value) {
 
 void myAfterTouch(byte channel, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
-    FM_RANGE_UPPER = int(value * AT_WHEEL);
-    FM_RANGE_LOWER = (FM_RANGE_UPPER - FM_RANGE_UPPER - FM_RANGE_UPPER);
+    AT_RANGE_UPPER = int(value * AT_WHEEL);
+    AT_RANGE_LOWER = (AT_RANGE_UPPER - AT_RANGE_UPPER - AT_RANGE_UPPER);
   }
 }
 
 void mod_task() {
 
-  FM_VALUE = analogRead(FM_INPUT);
-  FM_VALUE = map(FM_VALUE, 0, 4095, FM_RANGE_LOWER, FM_RANGE_UPPER);
-
-  MOD_WHEEL = analogRead(MOD_DEPTH);
-  MOD_WHEEL = map(MOD_WHEEL, 0, 4095, 0, 16.12);
-
-  AT_WHEEL = analogRead(AT_DEPTH);
-  AT_WHEEL = map(AT_WHEEL, 0, 4095, 0, 16.12);
-
-  BEND_WHEEL = analogRead(PB_DEPTH);
-  BEND_WHEEL = map(BEND_WHEEL, 0, 4095, 0, 12);
+  MOD_VALUE = analogRead(FM_INPUT);
+  FM_VALUE = map(MOD_VALUE, 0, 4095, FM_RANGE_LOWER, FM_RANGE_UPPER);
+  AT_VALUE = map(MOD_VALUE, 0, 4095, AT_RANGE_LOWER, AT_RANGE_UPPER);
 }
 
-void unsustainNotes() {   // Unsustain notes
+void mux_read() {
+  mux1Read = adc->adc1->analogRead(MUX_IN);
+
+  if (mux1Read > (mux1ValuesPrev[muxInput] + QUANTISE_FACTOR) || mux1Read < (mux1ValuesPrev[muxInput] - QUANTISE_FACTOR)) {
+    mux1ValuesPrev[muxInput] = mux1Read;
+    switch (muxInput) {
+      case MUX1_MOD_DEPTH:   
+        MOD_WHEEL = mux1Read;
+        MOD_WHEEL = map(MOD_WHEEL, 0, 4095, 0, 16.12);
+        break;
+      case MUX1_AT_DEPTH:
+        AT_WHEEL = mux1Read;
+        AT_WHEEL = map(AT_WHEEL, 0, 4095, 0, 16.12);
+        break;
+      case MUX1_PB_DEPTH:
+        BEND_WHEEL = mux1Read;
+        BEND_WHEEL = map(BEND_WHEEL, 0, 4095, 0, 12);
+        break;
+      case MUX1_spare3:
+        //myControlChange(midiChannel, CCosc2PW, mux1Read);
+        break;
+      case MUX1_spare4:
+        break;
+      case MUX1_spare5:
+        //myControlChange(midiChannel, CCosc1PWM, mux1Read);
+        break;
+      case MUX1_spare6:
+        //myControlChange(midiChannel, CCpwLFO, mux1Read);
+        break;
+      case MUX1_spare7:
+        //myControlChange(midiChannel, CCfmDepth, mux1Read);
+        break;
+    }
+  }
+    muxInput++;
+  if (muxInput >= MUXCHANNELS)
+    muxInput = 0;
+
+  digitalWrite(ANA_MUX_S0, muxInput & B0001);
+  digitalWrite(ANA_MUX_S1, muxInput & B0010);
+  digitalWrite(ANA_MUX_S2, muxInput & B0100);
+}
+
+void unsustainNotes() {  // Unsustain notes
   for (int i = 0; i < NO_OF_VOICES; i++) {
     if (voices[i].keyDown) {
-    voices[i].sustained = false;
-    sendnote = voices[i].note;
-    sendvelocity = voices[i].velocity;
-    myNoteOff(masterChan, sendnote, sendvelocity);
+      voices[i].sustained = false;
+      sendnote = voices[i].note;
+      sendvelocity = voices[i].velocity;
+      myNoteOff(masterChan, sendnote, sendvelocity);
     }
-    
   }
 }
 
-void sustainNotes() {   // Sustain notes
+void sustainNotes() {  // Sustain notes
   for (int i = 0; i < NO_OF_VOICES; i++) {
     if (voiceOn[i]) {
       voices[i].sustained = true;
@@ -824,66 +656,66 @@ void myNoteOff(byte channel, byte note, byte velocity) {
       switch (getVoiceNo(note)) {
         case 1:
           if (!voices[0].sustained) {
-          sr.set(GATE_NOTE1, LOW);
-          voices[0].note = -1;
-          voiceOn[0] = false;
-          voices[0].keyDown = false;
+            sr.set(GATE_NOTE1, LOW);
+            voices[0].note = -1;
+            voiceOn[0] = false;
+            voices[0].keyDown = false;
           }
           break;
         case 2:
           if (!voices[1].sustained) {
-          sr.set(GATE_NOTE2, LOW);
-          voices[1].note = -1;
-          voiceOn[1] = false;
-          voices[1].keyDown = false;
+            sr.set(GATE_NOTE2, LOW);
+            voices[1].note = -1;
+            voiceOn[1] = false;
+            voices[1].keyDown = false;
           }
           break;
         case 3:
           if (!voices[2].sustained) {
-          sr.set(GATE_NOTE3, LOW);
-          voices[2].note = -1;
-          voiceOn[2] = false;
-          voices[2].keyDown = false;
+            sr.set(GATE_NOTE3, LOW);
+            voices[2].note = -1;
+            voiceOn[2] = false;
+            voices[2].keyDown = false;
           }
           break;
         case 4:
           if (!voices[3].sustained) {
-          sr.set(GATE_NOTE4, LOW);
-          voices[3].note = -1;
-          voiceOn[3] = false;
-          voices[3].keyDown = false;
+            sr.set(GATE_NOTE4, LOW);
+            voices[3].note = -1;
+            voiceOn[3] = false;
+            voices[3].keyDown = false;
           }
           break;
         case 5:
           if (!voices[4].sustained) {
-          sr.set(GATE_NOTE5, LOW);
-          voices[4].note = -1;
-          voiceOn[4] = false;
-          voices[4].keyDown = false;
+            sr.set(GATE_NOTE5, LOW);
+            voices[4].note = -1;
+            voiceOn[4] = false;
+            voices[4].keyDown = false;
           }
           break;
         case 6:
           if (!voices[5].sustained) {
-          sr.set(GATE_NOTE6, LOW);
-          voices[5].note = -1;
-          voiceOn[5] = false;
-          voices[5].keyDown = false;
+            sr.set(GATE_NOTE6, LOW);
+            voices[5].note = -1;
+            voiceOn[5] = false;
+            voices[5].keyDown = false;
           }
           break;
         case 7:
           if (!voices[6].sustained) {
-          sr.set(GATE_NOTE7, LOW);
-          voices[6].note = -1;
-          voiceOn[6] = false;
-          voices[6].keyDown = false;
+            sr.set(GATE_NOTE7, LOW);
+            voices[6].note = -1;
+            voiceOn[6] = false;
+            voices[6].keyDown = false;
           }
           break;
         case 8:
           if (!voices[7].sustained) {
-          sr.set(GATE_NOTE8, LOW);
-          voices[7].note = -1;
-          voiceOn[7] = false;
-          voices[7].keyDown = false;
+            sr.set(GATE_NOTE8, LOW);
+            voices[7].note = -1;
+            voiceOn[7] = false;
+            voices[7].keyDown = false;
           }
           break;
       }
@@ -1027,7 +859,7 @@ void updateTimers() {
 }
 
 void updateVoice1() {
-  unsigned int mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data1);
   outputDAC(DAC_NOTE2, sample_data1);
@@ -1040,7 +872,7 @@ void updateVoice1() {
 }
 
 void updateVoice2() {
-  unsigned int mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data2);
   outputDAC(DAC_NOTE2, sample_data2);
@@ -1053,7 +885,7 @@ void updateVoice2() {
 }
 
 void updateVoice3() {
-  unsigned int mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data3);
   outputDAC(DAC_NOTE2, sample_data3);
@@ -1066,7 +898,7 @@ void updateVoice3() {
 }
 
 void updateVoice4() {
-  unsigned int mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data4);
   outputDAC(DAC_NOTE2, sample_data4);
@@ -1079,7 +911,7 @@ void updateVoice4() {
 }
 
 void updateVoice5() {
-  unsigned int mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data5);
   outputDAC(DAC_NOTE2, sample_data5);
@@ -1092,7 +924,7 @@ void updateVoice5() {
 }
 
 void updateVoice6() {
-  unsigned int mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data6);
   outputDAC(DAC_NOTE2, sample_data6);
@@ -1105,7 +937,7 @@ void updateVoice6() {
 }
 
 void updateVoice7() {
-  unsigned int mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data7);
   outputDAC(DAC_NOTE2, sample_data7);
@@ -1118,7 +950,7 @@ void updateVoice7() {
 }
 
 void updateVoice8() {
-  unsigned int mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data + FM_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data8);
   outputDAC(DAC_NOTE2, sample_data8);
@@ -1217,6 +1049,7 @@ void loop() {
   MIDI.read(masterChan);     //MIDI 5 Pin DIN
   usbMIDI.read(masterChan);  //USB Client MIDI
   mod_task();
+  mux_read();
   updateVoice1();
   updateVoice2();
   updateVoice3();
