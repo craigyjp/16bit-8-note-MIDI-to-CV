@@ -62,14 +62,14 @@ ADC *adc = new ADC();
 
 #define MUX_IN A14
 
-#define MUX1_MOD_DEPTH 0
-#define MUX1_AT_DEPTH 1
-#define MUX1_PB_DEPTH 2
-#define MUX1_spare3 3
+#define MUX1_FM_AT_DEPTH 0
+#define MUX1_TM_MOD_DEPTH 1
+#define MUX1_TM_AT_DEPTH 2
+#define MUX1_FM_MOD_DEPTH 3
 #define MUX1_spare4 4
 #define MUX1_spare5 5
 #define MUX1_spare6 6
-#define MUX1_spare7 7
+#define MUX1_PB_DEPTH 7
 
 #define QUANTISE_FACTOR 10
 

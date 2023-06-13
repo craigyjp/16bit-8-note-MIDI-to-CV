@@ -204,8 +204,10 @@ void myControlChange(byte channel, byte number, byte value) {
     switch (number) {
 
       case 1:
-        FM_RANGE_UPPER = int(value * MOD_WHEEL);
+        FM_RANGE_UPPER = int(value * FM_MOD_WHEEL);
         FM_RANGE_LOWER = (FM_RANGE_UPPER - FM_RANGE_UPPER - FM_RANGE_UPPER);
+        TM_RANGE_UPPER = int(value * TM_MOD_WHEEL);
+        TM_RANGE_LOWER = (TM_RANGE_UPPER - TM_RANGE_UPPER - TM_RANGE_UPPER);
         break;
 
       case 64:
@@ -223,8 +225,10 @@ void myControlChange(byte channel, byte number, byte value) {
 
 void myAfterTouch(byte channel, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
-    AT_RANGE_UPPER = int(value * AT_WHEEL);
-    AT_RANGE_LOWER = (AT_RANGE_UPPER - AT_RANGE_UPPER - AT_RANGE_UPPER);
+    FM_AT_RANGE_UPPER = int(value * FM_AT_WHEEL);
+    FM_AT_RANGE_LOWER = (FM_AT_RANGE_UPPER - FM_AT_RANGE_UPPER - FM_AT_RANGE_UPPER);
+    TM_AT_RANGE_UPPER = int(value * TM_AT_WHEEL);
+    TM_AT_RANGE_LOWER = (TM_AT_RANGE_UPPER - TM_AT_RANGE_UPPER - TM_AT_RANGE_UPPER);
   }
 }
 
@@ -232,7 +236,9 @@ void mod_task() {
 
   MOD_VALUE = analogRead(FM_INPUT);
   FM_VALUE = map(MOD_VALUE, 0, 4095, FM_RANGE_LOWER, FM_RANGE_UPPER);
-  AT_VALUE = map(MOD_VALUE, 0, 4095, AT_RANGE_LOWER, AT_RANGE_UPPER);
+  FM_AT_VALUE = map(MOD_VALUE, 0, 4095, FM_AT_RANGE_LOWER, FM_AT_RANGE_UPPER);
+  TM_VALUE = map(MOD_VALUE, 0, 4095, TM_RANGE_LOWER, TM_RANGE_UPPER);
+  TM_AT_VALUE = map(MOD_VALUE, 0, 4095, TM_AT_RANGE_LOWER, TM_AT_RANGE_UPPER);
 }
 
 void mux_read() {
@@ -241,31 +247,31 @@ void mux_read() {
   if (mux1Read > (mux1ValuesPrev[muxInput] + QUANTISE_FACTOR) || mux1Read < (mux1ValuesPrev[muxInput] - QUANTISE_FACTOR)) {
     mux1ValuesPrev[muxInput] = mux1Read;
     switch (muxInput) {
-      case MUX1_MOD_DEPTH:   
-        MOD_WHEEL = mux1Read;
-        MOD_WHEEL = map(MOD_WHEEL, 0, 4095, 0, 16.12);
+      case MUX1_FM_AT_DEPTH: // AT depth to FM
+        FM_AT_WHEEL = mux1Read;
+        FM_AT_WHEEL = map(FM_AT_WHEEL, 0, 4095, 0, 16.12);
         break;
-      case MUX1_AT_DEPTH:
-        AT_WHEEL = mux1Read;
-        AT_WHEEL = map(AT_WHEEL, 0, 4095, 0, 16.12);
+      case MUX1_TM_MOD_DEPTH: // Modwheel Depth to TM
+        TM_MOD_WHEEL = mux1Read;
+        TM_MOD_WHEEL = map(TM_MOD_WHEEL, 0, 4095, 0, 16.12);
         break;
-      case MUX1_PB_DEPTH:
+      case MUX1_TM_AT_DEPTH: // AT depth to TM
+        TM_AT_WHEEL = mux1Read;
+        TM_AT_WHEEL = map(TM_AT_WHEEL, 0, 4095, 0, 16.12);
+        break;
+      case MUX1_FM_MOD_DEPTH: // Modwheel depth to FM
+        FM_MOD_WHEEL = mux1Read;
+        FM_MOD_WHEEL = map(FM_MOD_WHEEL, 0, 4095, 0, 16.12);
+        break;
+      case MUX1_spare4: // 4
+        break;
+      case MUX1_spare5: // 5
+        break;
+      case MUX1_spare6: // 6
+        break;
+      case MUX1_PB_DEPTH: // 2
         BEND_WHEEL = mux1Read;
         BEND_WHEEL = map(BEND_WHEEL, 0, 4095, 0, 12);
-        break;
-      case MUX1_spare3:
-        //myControlChange(midiChannel, CCosc2PW, mux1Read);
-        break;
-      case MUX1_spare4:
-        break;
-      case MUX1_spare5:
-        //myControlChange(midiChannel, CCosc1PWM, mux1Read);
-        break;
-      case MUX1_spare6:
-        //myControlChange(midiChannel, CCpwLFO, mux1Read);
-        break;
-      case MUX1_spare7:
-        //myControlChange(midiChannel, CCfmDepth, mux1Read);
         break;
     }
   }
@@ -859,7 +865,7 @@ void updateTimers() {
 }
 
 void updateVoice1() {
-  unsigned int mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data1);
   outputDAC(DAC_NOTE2, sample_data1);
@@ -872,11 +878,11 @@ void updateVoice1() {
 }
 
 void updateVoice2() {
-  unsigned int mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data2);
   outputDAC(DAC_NOTE2, sample_data2);
-  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data2);
   unsigned int velmV = ((unsigned int)((float)voices[1].velocity) * VEL_SF);
@@ -885,11 +891,11 @@ void updateVoice2() {
 }
 
 void updateVoice3() {
-  unsigned int mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data3);
   outputDAC(DAC_NOTE2, sample_data3);
-  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data3);
   unsigned int velmV = ((unsigned int)((float)voices[2].velocity) * VEL_SF);
@@ -898,11 +904,11 @@ void updateVoice3() {
 }
 
 void updateVoice4() {
-  unsigned int mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data4);
   outputDAC(DAC_NOTE2, sample_data4);
-  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data4);
   unsigned int velmV = ((unsigned int)((float)voices[3].velocity) * VEL_SF);
@@ -911,11 +917,11 @@ void updateVoice4() {
 }
 
 void updateVoice5() {
-  unsigned int mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data5);
   outputDAC(DAC_NOTE2, sample_data5);
-  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data5);
   unsigned int velmV = ((unsigned int)((float)voices[4].velocity) * VEL_SF);
@@ -924,11 +930,11 @@ void updateVoice5() {
 }
 
 void updateVoice6() {
-  unsigned int mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data6);
   outputDAC(DAC_NOTE2, sample_data6);
-  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data6);
   unsigned int velmV = ((unsigned int)((float)voices[5].velocity) * VEL_SF);
@@ -937,11 +943,11 @@ void updateVoice6() {
 }
 
 void updateVoice7() {
-  unsigned int mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data7);
   outputDAC(DAC_NOTE2, sample_data7);
-  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data7);
   unsigned int velmV = ((unsigned int)((float)voices[6].velocity) * VEL_SF);
@@ -950,11 +956,11 @@ void updateVoice7() {
 }
 
 void updateVoice8() {
-  unsigned int mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data + FM_VALUE + AT_VALUE));
+  unsigned int mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data8);
   outputDAC(DAC_NOTE2, sample_data8);
-  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data8);
   unsigned int velmV = ((unsigned int)((float)voices[7].velocity) * VEL_SF);

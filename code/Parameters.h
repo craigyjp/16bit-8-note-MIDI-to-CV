@@ -2,15 +2,26 @@
 // Modulation
 //
 float FM_VALUE = 0.0f;
+float FM_AT_VALUE = 0.0f;
 float TM_VALUE = 0.0f;
-float AT_VALUE = 0.0f;
+float TM_AT_VALUE = 0.0f;
 float MOD_VALUE = 0.0f;
+
 int FM_RANGE_UPPER = 0;
 int FM_RANGE_LOWER = 0;
-int AT_RANGE_UPPER = 0;
-int AT_RANGE_LOWER = 0;
-float MOD_WHEEL = 0.00f;
-float AT_WHEEL = 0.00f;
+int FM_AT_RANGE_UPPER = 0;
+int FM_AT_RANGE_LOWER = 0;
+
+int TM_RANGE_UPPER = 0;
+int TM_RANGE_LOWER = 0;
+int TM_AT_RANGE_UPPER = 0;
+int TM_AT_RANGE_LOWER = 0;
+
+float FM_MOD_WHEEL = 0.00f;
+float FM_AT_WHEEL = 0.00f;
+float TM_AT_WHEEL = 0.00f;
+float TM_MOD_WHEEL = 0.00f;
+
 int BEND_WHEEL = 0;
 int TM_RANGE = 0;
 
