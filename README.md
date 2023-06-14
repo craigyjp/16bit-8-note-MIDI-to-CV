@@ -26,6 +26,8 @@ MIDI Channel selection or Omni
 
 Poly/Unison/Mono modes with note modes
 
+Poly note variable from 2-8 notes
+
 Transpose Mode +/- one Octave
 
 Octave shift 0 to -3 Octaves to give 0V on bottom C
