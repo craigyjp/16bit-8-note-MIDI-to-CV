@@ -33,6 +33,7 @@ static int mux1Read = 0;
 float sfAdj[8];
 
 int polyphony;
+//int polyphony;
 int masterChan;
 int masterTran;
 int previousMode;

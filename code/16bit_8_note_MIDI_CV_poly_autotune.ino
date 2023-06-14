@@ -291,7 +291,7 @@ void mux_read() {
 }
 
 void unsustainNotes() {  // Unsustain notes
-  for (int i = 0; i < NO_OF_VOICES; i++) {
+  for (int i = 0; i < (polyphony + 2); i++) {
     if (voices[i].keyDown) {
       voices[i].sustained = false;
       sendnote = voices[i].note;
@@ -302,7 +302,7 @@ void unsustainNotes() {  // Unsustain notes
 }
 
 void sustainNotes() {  // Sustain notes
-  for (int i = 0; i < NO_OF_VOICES; i++) {
+  for (int i = 0; i < (polyphony + 2); i++) {
     if (voiceOn[i]) {
       voices[i].sustained = true;
     }
@@ -1191,7 +1191,9 @@ void updateSelection() {  // Called whenever encoder is turned
       if (menu == OCTAVE_SET_CH) octave = mod(encoderPos, 4);
 
     case POLYPHONY_COUNT:
-      if (menu == POLYPHONY_COUNT) polyphony = mod(encoderPos, 7);
+      if (menu == POLYPHONY_COUNT) {
+      polyphony = mod(encoderPos, 7);
+      }
 
     case SETTINGS:
       display.setCursor(0, 0);
