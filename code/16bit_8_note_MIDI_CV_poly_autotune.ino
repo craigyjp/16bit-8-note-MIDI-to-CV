@@ -1,7 +1,7 @@
 /*
       8 note Poly MIDI to CV
 
-      Version 5
+      Version 6
 
       Copyright (C) 2020 Craig Barnes
 
@@ -46,6 +46,7 @@ enum Menu {
   MIDI_CHANNEL_SET_CH,
   TRANSPOSE_SET_CH,
   OCTAVE_SET_CH,
+  POLYPHONY_COUNT,
   SCALE_FACTOR,
   SCALE_FACTOR_SET_CH
 } menu;
@@ -186,9 +187,14 @@ void setup() {
     EEPROM.write(ADDR_OCTAVE, octave);
   }
 
+  polyphony = (int)EEPROM.read(ADDR_NOTE_NUMBER);
+  if (polyphony > 8 || polyphony < 1) {
+    polyphony = 8;
+    EEPROM.write(ADDR_NOTE_NUMBER, polyphony);
+  }
+
   menu = SETTINGS;
   updateSelection();
-
 }
 
 void myPitchBend(byte channel, int bend) {
@@ -247,35 +253,35 @@ void mux_read() {
   if (mux1Read > (mux1ValuesPrev[muxInput] + QUANTISE_FACTOR) || mux1Read < (mux1ValuesPrev[muxInput] - QUANTISE_FACTOR)) {
     mux1ValuesPrev[muxInput] = mux1Read;
     switch (muxInput) {
-      case MUX1_FM_AT_DEPTH: // AT depth to FM
+      case MUX1_FM_AT_DEPTH:  // AT depth to FM
         FM_AT_WHEEL = mux1Read;
         FM_AT_WHEEL = map(FM_AT_WHEEL, 0, 4095, 0, 16.12);
         break;
-      case MUX1_TM_MOD_DEPTH: // Modwheel Depth to TM
+      case MUX1_TM_MOD_DEPTH:  // Modwheel Depth to TM
         TM_MOD_WHEEL = mux1Read;
         TM_MOD_WHEEL = map(TM_MOD_WHEEL, 0, 4095, 0, 16.12);
         break;
-      case MUX1_TM_AT_DEPTH: // AT depth to TM
+      case MUX1_TM_AT_DEPTH:  // AT depth to TM
         TM_AT_WHEEL = mux1Read;
         TM_AT_WHEEL = map(TM_AT_WHEEL, 0, 4095, 0, 16.12);
         break;
-      case MUX1_FM_MOD_DEPTH: // Modwheel depth to FM
+      case MUX1_FM_MOD_DEPTH:  // Modwheel depth to FM
         FM_MOD_WHEEL = mux1Read;
         FM_MOD_WHEEL = map(FM_MOD_WHEEL, 0, 4095, 0, 16.12);
         break;
-      case MUX1_spare4: // 4
+      case MUX1_spare4:  // 4
         break;
-      case MUX1_spare5: // 5
+      case MUX1_spare5:  // 5
         break;
-      case MUX1_spare6: // 6
+      case MUX1_spare6:  // 6
         break;
-      case MUX1_PB_DEPTH: // 2
+      case MUX1_PB_DEPTH:  // 2
         BEND_WHEEL = mux1Read;
         BEND_WHEEL = map(BEND_WHEEL, 0, 4095, 0, 12);
         break;
     }
   }
-    muxInput++;
+  muxInput++;
   if (muxInput >= MUXCHANNELS)
     muxInput = 0;
 
@@ -798,7 +804,7 @@ int getVoiceNo(int note) {
   earliestTime = millis();  //Initialise to now
   if (note == -1) {
     //NoteOn() - Get the oldest free voice (recent voices may be still on release stage)
-    for (int i = 0; i < NO_OF_VOICES; i++) {
+    for (int i = 0; i < (polyphony + 2); i++) {
       if (voices[i].note == -1) {
         if (voices[i].timeOn < earliestTime) {
           earliestTime = voices[i].timeOn;
@@ -809,7 +815,7 @@ int getVoiceNo(int note) {
     if (voiceToReturn == -1) {
       //No free voices, need to steal oldest sounding voice
       earliestTime = millis();  //Reinitialise
-      for (int i = 0; i < NO_OF_VOICES; i++) {
+      for (int i = 0; i < (polyphony + 2); i++) {
         if (voices[i].timeOn < earliestTime) {
           earliestTime = voices[i].timeOn;
           voiceToReturn = i;
@@ -819,7 +825,7 @@ int getVoiceNo(int note) {
     return voiceToReturn + 1;
   } else {
     //NoteOff() - Get voice number from note
-    for (int i = 0; i < NO_OF_VOICES; i++) {
+    for (int i = 0; i < (polyphony + 2); i++) {
       if (voices[i].note == note) {
         return i + 1;
       }
@@ -1084,7 +1090,7 @@ void updateMenu() {  // Called whenever button is pushed
   if (highlightEnabled) {  // Highlight is active, choose selection
     switch (menu) {
       case SETTINGS:
-        switch (mod(encoderPos, 5)) {
+        switch (mod(encoderPos, 6)) {
           case 0:
             menu = KEYBOARD_MODE_SET_CH;
             break;
@@ -1098,6 +1104,9 @@ void updateMenu() {  // Called whenever button is pushed
             menu = OCTAVE_SET_CH;
             break;
           case 4:
+            menu = POLYPHONY_COUNT;
+            break;
+          case 5:
             menu = SCALE_FACTOR;
             break;
         }
@@ -1128,6 +1137,11 @@ void updateMenu() {  // Called whenever button is pushed
         if (octave == 2) realoctave = -12;
         if (octave == 3) realoctave = 0;
         EEPROM.write(ADDR_REALOCTAVE, realoctave);
+        break;
+
+      case POLYPHONY_COUNT:  // Save polyphony mode setting to EEPROM
+        menu = SETTINGS;
+        EEPROM.write(ADDR_NOTE_NUMBER, polyphony);
         break;
 
       case SCALE_FACTOR:
@@ -1176,13 +1190,16 @@ void updateSelection() {  // Called whenever encoder is turned
     case OCTAVE_SET_CH:
       if (menu == OCTAVE_SET_CH) octave = mod(encoderPos, 4);
 
+    case POLYPHONY_COUNT:
+      if (menu == POLYPHONY_COUNT) polyphony = mod(encoderPos, 7);
+
     case SETTINGS:
       display.setCursor(0, 0);
       display.setTextColor(WHITE, BLACK);
       display.print(F("SETTINGS"));
       display.setCursor(0, 16);
 
-      if (menu == SETTINGS) setHighlight(0, 5);
+      if (menu == SETTINGS) setHighlight(0, 6);
       display.print(F("Keyboard Mode "));
       if (menu == KEYBOARD_MODE_SET_CH) display.setTextColor(BLACK, WHITE);
       if (keyboardMode == 0) display.print("Poly  ");
@@ -1195,7 +1212,7 @@ void updateSelection() {  // Called whenever encoder is turned
       display.println(F(""));
       display.setTextColor(WHITE, BLACK);
 
-      if (menu == SETTINGS) setHighlight(1, 5);
+      if (menu == SETTINGS) setHighlight(1, 6);
       display.print(F("Midi Channel  "));
       if (menu == MIDI_CHANNEL_SET_CH) display.setTextColor(BLACK, WHITE);
       if (masterChan == 0) display.print("Omni");
@@ -1203,14 +1220,14 @@ void updateSelection() {  // Called whenever encoder is turned
       display.println(F(" "));
       display.setTextColor(WHITE, BLACK);
 
-      if (menu == SETTINGS) setHighlight(2, 5);
+      if (menu == SETTINGS) setHighlight(2, 6);
       display.print(F("Transpose     "));
       if (menu == TRANSPOSE_SET_CH) display.setTextColor(BLACK, WHITE);
       display.print(masterTran - 12);
       display.println(F(" "));
       display.setTextColor(WHITE, BLACK);
 
-      if (menu == SETTINGS) setHighlight(3, 5);
+      if (menu == SETTINGS) setHighlight(3, 6);
       display.print(F("Octave Adjust "));
       if (menu == OCTAVE_SET_CH) display.setTextColor(BLACK, WHITE);
       if (octave == 0) display.print("-3 ");
@@ -1220,7 +1237,14 @@ void updateSelection() {  // Called whenever encoder is turned
       display.println(F(" "));
       display.setTextColor(WHITE, BLACK);
 
-      if (menu == SETTINGS) setHighlight(4, 5);
+      if (menu == SETTINGS) setHighlight(4, 6);
+      display.print(F("Polyphony Count  "));
+      if (menu == POLYPHONY_COUNT) display.setTextColor(BLACK, WHITE);
+      display.print(polyphony + 2);
+      display.println(F(" "));
+      display.setTextColor(WHITE, BLACK);
+
+      if (menu == SETTINGS) setHighlight(5, 6);
       else display.setTextColor(WHITE, BLACK);
       display.println(F("Scale Factor     "));
       break;

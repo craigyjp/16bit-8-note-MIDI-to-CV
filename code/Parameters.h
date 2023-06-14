@@ -32,6 +32,7 @@ static int mux1Read = 0;
 
 float sfAdj[8];
 
+int polyphony;
 int masterChan;
 int masterTran;
 int previousMode;
@@ -95,6 +96,7 @@ uint32_t channel_h = 0b00000010011100000000000000000000;
 #define ADDR_OCTAVE 21
 #define ADDR_REALOCTAVE 22
 #define ADDR_KEYBOARD_MODE 23
+#define ADDR_NOTE_NUMBER 30
 
 bool highlightEnabled = false;   // Flag indicating whether highighting should be enabled on menu
 #define HIGHLIGHT_TIMEOUT 20000  // Highlight disappears after 20 seconds.  Timer resets whenever encoder turned or button pushed
