@@ -1,6 +1,6 @@
 # 16bit-8-note-MIDI-to-CV
 
-* Collaboration with Andreas Oswald Hierzenberger
+* Collaboration with Andreas Oswald "MrsColumbo" Hierzenberger
 
 Newer version of my old 6 note poly CV converter, this time it uses 16 bit DACs and has the facility for autotune (not yet implemented). 
 
