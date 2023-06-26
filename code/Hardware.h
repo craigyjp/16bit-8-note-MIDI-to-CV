@@ -15,9 +15,13 @@ ADC *adc = new ADC();
 //Note DACS
 #define DAC_NOTE1 7
 #define DAC_NOTE2 8
-#define DAC_NOTE3 9
+#define DAC_NOTE3 5
 #define DAC_NOTE4 6
 #define DAC_NOTE5 10
+
+
+//#define TUNE_INPUT 9
+
 
 #define FM_INPUT A10
 
@@ -33,17 +37,6 @@ ADC *adc = new ADC();
 #define ANA_MUX_S2 29
 
 #define MUX_ENABLE 37
-#define TUNE_INPUT 2
-
-//Trig outputs
-#define TRIG_NOTE1 16
-#define TRIG_NOTE2 17
-#define TRIG_NOTE3 18
-#define TRIG_NOTE4 19
-#define TRIG_NOTE5 20
-#define TRIG_NOTE6 21
-#define TRIG_NOTE7 22
-#define TRIG_NOTE8 23
 
 //Gate outputs
 #define GATE_NOTE1 0
@@ -55,10 +48,23 @@ ADC *adc = new ADC();
 #define GATE_NOTE7 6
 #define GATE_NOTE8 7
 
+#define AUTOTUNE_LED 8
+
+//Trig outputs
+#define TRIG_NOTE1 16
+#define TRIG_NOTE2 17
+#define TRIG_NOTE3 18
+#define TRIG_NOTE4 19
+#define TRIG_NOTE5 20
+#define TRIG_NOTE6 21
+#define TRIG_NOTE7 22
+#define TRIG_NOTE8 23
+
 //Encoder or buttons
 #define ENC_A 0
 #define ENC_B 1
 #define ENC_BTN 2
+#define AUTOTUNE_BTN 3
 
 #define MUX_IN A14
 
@@ -105,8 +111,8 @@ void setupHardware() {
   pinMode(ANA_MUX_S1, OUTPUT);
   pinMode(ANA_MUX_S2, OUTPUT);
 
-  pinMode(TUNE_INPUT, INPUT);
   pinMode(MUX_ENABLE, OUTPUT);
+  //pinMode(TUNE_INPUT, INPUT);
 
   digitalWrite(DAC_NOTE1, HIGH);
   digitalWrite(DAC_NOTE2, HIGH);
