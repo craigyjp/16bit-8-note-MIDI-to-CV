@@ -274,6 +274,7 @@ void loop() {
     usbMIDI.read(masterChan);  //USB Client MIDI
     mod_task();
     mux_read();
+    adjustInterval();
     updateVoice1();
     updateVoice2();
     updateVoice3();
@@ -1074,6 +1075,63 @@ void myPitchBend(byte channel, int bend) {
   }
 }
 
+void adjustInterval() {
+  switch (INTERVAL_POT) {
+      case 12:
+        INTERVAL = 3235;
+        break;
+
+      case 11:
+        INTERVAL = 2969;
+        break;
+
+      case 10:
+        INTERVAL = 2699;
+        break;
+
+      case 9:
+        INTERVAL = 2429;
+        break;
+
+      case 8:
+        INTERVAL = 2159;
+        break;
+
+      case 7:
+        INTERVAL = 1889;
+        break;
+
+      case 6:
+        INTERVAL = 1619;
+        break;
+
+      case 5:
+        INTERVAL = 1349;
+        break;
+
+      case 4:
+        INTERVAL = 1079;
+        break;
+
+      case 3:
+        INTERVAL = 809;
+        break;
+
+      case 2:
+        INTERVAL = 539;
+        break;
+
+      case 1:
+        INTERVAL = 270;
+        break;
+
+      case 0:
+        INTERVAL = 0;
+        break;
+  }
+}
+
+
 void myControlChange(byte channel, byte number, byte value) {
   if ((channel == masterChan) || (masterChan == 0)) {
     switch (number) {
@@ -1141,8 +1199,12 @@ void mux_read() {
       case MUX1_spare4:  // 4
         break;
       case MUX1_spare5:  // 5
+        DETUNE = mux1Read;
+        DETUNE = map(DETUNE, 0, 4095, 0, 127);
         break;
       case MUX1_spare6:  // 6
+        INTERVAL_POT = mux1Read;
+        INTERVAL_POT = map(INTERVAL_POT, 0, 4095, 0, 12);
         break;
       case MUX1_PB_DEPTH:  // 2
         BEND_WHEEL = mux1Read;
@@ -1743,7 +1805,7 @@ void updateVoice1() {
   mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note1][0]));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data1);
-  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note1][1]));
+  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note1][1]));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data1);
   mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE));
@@ -1758,7 +1820,7 @@ void updateVoice2() {
   mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note2][2]));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data2);
-  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note2][3]));
+  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note2][3]));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data2);
   mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
@@ -1773,7 +1835,7 @@ void updateVoice3() {
   mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note3][4]));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data3);
-  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note3][5]));
+  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note3][5]));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data3);
   mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
@@ -1788,7 +1850,7 @@ void updateVoice4() {
   mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note4][6]));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data4);
-  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note4][7]));
+  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note4][7]));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data4);
   mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
@@ -1803,7 +1865,7 @@ void updateVoice5() {
   mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note5][8]));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data5);
-  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note5][9]));
+  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note5][9]));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data5);
   mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
@@ -1818,7 +1880,7 @@ void updateVoice6() {
   mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note6][10]));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data6);
-  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note6][11]));
+  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note6][11]));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data6);
   mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
@@ -1833,7 +1895,7 @@ void updateVoice7() {
   mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note7][12]));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data7);
-  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note7][13]));
+  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note7][13]));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data7);
   mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
@@ -1848,7 +1910,7 @@ void updateVoice8() {
   mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note8][14]));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data8);
-  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note8][15]));
+  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + DETUNE + INTERVAL) + (autotune_value[note8][15]));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data8);
   mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));

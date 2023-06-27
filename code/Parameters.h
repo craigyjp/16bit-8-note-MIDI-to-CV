@@ -178,6 +178,9 @@ float TM_MOD_WHEEL = 0.00f;
 
 int BEND_WHEEL = 0;
 int TM_RANGE = 0;
+int DETUNE = 0;
+int INTERVAL_POT = 0;
+int INTERVAL = 0;
 
 #define MUXCHANNELS 8
 static byte muxInput = 0;
