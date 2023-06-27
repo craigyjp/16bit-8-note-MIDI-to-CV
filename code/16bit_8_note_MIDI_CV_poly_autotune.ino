@@ -46,8 +46,6 @@ enum Menu {
   TRANSPOSE_SET_CH,
   OCTAVE_SET_CH,
   POLYPHONY_COUNT,
-  SCALE_FACTOR,
-  SCALE_FACTOR_SET_CH
 } menu;
 
 char gateTrig[] = "TTTTTTT";
@@ -115,7 +113,6 @@ void setup() {
   autosignal.begin(22, FREQMEASUREMULTI_INTERLEAVE);
   setupHardware();
 
-  //attachInterrupt(digitalPinToInterrupt(TUNE_INPUT), pulseCounter, CHANGE);
   octoswitch.begin(PIN_DATA, PIN_LOAD, PIN_CLK);
   octoswitch.setCallback(onButtonPress);
 
@@ -157,9 +154,6 @@ void setup() {
   for (int i = 0; i < 8; i++) {
     gateTrig[i] = (char)EEPROM.read(ADDR_GATE_TRIG + i);
     if (gateTrig[i] != 'G' || gateTrig[i] != 'T') EEPROM.write(ADDR_GATE_TRIG + i, 'T');
-    gateTrig[i] = (char)EEPROM.read(ADDR_GATE_TRIG + i);
-    EEPROM.get(ADDR_SF_ADJUST + i * sizeof(float), sfAdj[i]);
-    if ((sfAdj[i] < 0.9f) || (sfAdj[i] > 1.1f) || isnan(sfAdj[i])) sfAdj[i] = 1.0f;
   }
 
   // Set defaults if EEPROM not initialized
@@ -202,14 +196,56 @@ void setup() {
   for (int i = 0; i < 128; i++) {
 
     //EEPROM.write(EEPROM_OFFSET + i, -1);
-    for (int o = 0; o < 2; o++) {
+    for (int o = 0; o < (numOscillators + 1); o++) {
       switch (o) {
         case 0:
           retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + i);
           break;
         case 1:
-          //storeNegativeNumber((EEPROM_OFFSET + 128 + i), 100);
           retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + i);
+          break;
+        case 2:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
+          break;
+        case 3:
+          //storeNegativeNumber((EEPROM_OFFSET + 384 + i), 100);
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
+          break;
+        case 4:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + i);
+          break;
+        case 5:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + i);
+          break;
+        case 6:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + i);
+          break;
+        case 7:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + i);
+          break;
+        case 8:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + i);
+          break;
+        case 9:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + i);
+          break;
+        case 10:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + i);
+          break;
+        case 11:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + i);
+          break;
+        case 12:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + i);
+          break;
+        case 13:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + i);
+          break;
+        case 14:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + i);
+          break;
+        case 15:
+          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + i);
           break;
       }
       (autotune_value[i][o]) = retrievedNumber;
@@ -250,6 +286,17 @@ void loop() {
   }
 
   if (autotuneStart) {
+    display.setCursor(0, 0);
+    display.setTextColor(WHITE, BLACK);
+    display.println(F("Oscillator 1:"));
+    display.println(F("Oscillator 2:"));
+    display.println(F("Oscillator 3:"));
+    display.println(F("Oscillator 4:"));
+    display.println(F("Oscillator 5:"));
+    display.println(F("Oscillator 6:"));
+    display.println(F("Oscillator 7:"));
+    display.println(F("Oscillator 8:"));
+    display.display();
 
     Serial.print("Oscillator ");
     Serial.println(oscillator);
@@ -263,19 +310,99 @@ void loop() {
     switch (oscillator) {
 
       case 0:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * sfAdj[0] + 0.5) + (autotune_value[tuneNote][oscillator]));
-        // Serial.print("Channel A Millivolts ");
-        // Serial.println(mV);
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
         sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
         outputDAC(DAC_NOTE1, sample_data1);
         break;
 
       case 1:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * sfAdj[1] + 0.5) + (autotune_value[tuneNote][oscillator]));
-        // Serial.print("Channel B Millivolts ");
-        // Serial.println(mV);
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data1);
+        break;
+
+      case 2:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
         sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
         outputDAC(DAC_NOTE1, sample_data2);
+        break;
+
+      case 3:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data2);
+        break;
+
+      case 4:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data3);
+        break;
+
+      case 5:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data3);
+        break;
+
+      case 6:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data4);
+        break;
+
+      case 7:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data4);
+        break;
+
+      case 8:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data5);
+        break;
+
+      case 9:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data5);
+        break;
+
+      case 10:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data6);
+        break;
+
+      case 11:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data6);
+        break;
+
+      case 12:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data7);
+        break;
+
+      case 13:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data7);
+        break;
+
+      case 14:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data8);
+        break;
+
+      case 15:
+        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + (autotune_value[tuneNote][oscillator]));
+        sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data8);
         break;
     }
 
@@ -309,7 +436,8 @@ void loop() {
         // Modify the values of A and B inside the loop
         if (currentFrequency[tuneNote] > targetFrequency) {
           frequencyError--;
-        } else {
+        }
+        if (currentFrequency[tuneNote] < targetFrequency) {
           frequencyError++;
         }
         Serial.print("Autotune value ");
@@ -323,9 +451,7 @@ void loop() {
         case 0:
           Serial.print("Updating oscillator frequency ");
           Serial.println(tuneNote);
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * sfAdj[0] + 0.5) + frequencyError);
-          // Serial.print("Channel A Millivolts ");
-          // Serial.println(mV);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
           sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
           outputDAC(DAC_NOTE1, sample_data1);
           break;
@@ -333,11 +459,121 @@ void loop() {
         case 1:
           Serial.print("Updating oscillator frequency ");
           Serial.println(tuneNote);
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * sfAdj[1] + 0.5) + frequencyError);
-          // Serial.print("Channel B Millivolts ");
-          // Serial.println(mV);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data1);
+          break;
+
+        case 2:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
           sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
           outputDAC(DAC_NOTE1, sample_data2);
+          break;
+
+        case 3:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data2);
+          break;
+
+        case 4:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE1, sample_data3);
+          break;
+
+        case 5:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data3);
+          break;
+
+        case 6:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE1, sample_data4);
+          break;
+
+        case 7:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data4);
+          break;
+
+        case 8:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE1, sample_data5);
+          break;
+
+        case 9:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data5);
+          break;
+
+        case 10:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE1, sample_data6);
+          break;
+
+        case 11:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data6);
+          break;
+
+        case 12:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE1, sample_data7);
+          break;
+
+        case 13:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data7);
+          break;
+
+        case 14:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data8 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE1, sample_data8);
+          break;
+
+        case 15:
+          Serial.print("Updating oscillator frequency ");
+          Serial.println(tuneNote);
+          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * 1.00 + 0.5) + frequencyError);
+          sample_data8 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+          outputDAC(DAC_NOTE2, sample_data8);
           break;
       }
       delayMicroseconds(100);
@@ -358,11 +594,30 @@ void loop() {
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + tuneNote);
         Serial.println(retrievedNumber);
         break;
+
+      case 2:
+        storeNegativeNumber((EEPROM_OFFSET + 256 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 3:
+        storeNegativeNumber((EEPROM_OFFSET + 384 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
     }
     tuneNote++;
     if (tuneNote > 96) {
-      tuneNote = 0;
+      tuneNote = 1;
+      //autotune_value[0][oscillator] = autotune_value[1][oscillator]
       extrapolate_higher_notes();
+      display.setCursor(10, 0);
+      display.setTextColor(WHITE, BLACK);
+      display.print(F("PASSED"));
+      display.display();
       oscillator++;
       targetFrequency = 0.00;
       for (int i = 0; i < 128; i++) {
@@ -375,49 +630,174 @@ void loop() {
 
       switch (oscillator) {
 
+        case 0:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, LOW);
+          digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, LOW);
+          break;
+
         case 1:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, LOW);
+          digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, HIGH);
+          break;
+
+        case 2:
           digitalWrite(MUX_S0, HIGH);
           digitalWrite(MUX_S1, LOW);
           digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, LOW);
           break;
 
-          // case 2:
-          //   digitalWrite(MUX_S0, LOW);
-          //   digitalWrite(MUX_S1, HIGH);
-          //   digitalWrite(MUX_S2, LOW);
-          //   break;
+        case 3:
+          digitalWrite(MUX_S0, HIGH);
+          digitalWrite(MUX_S1, LOW);
+          digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, HIGH);
+          break;
+
+        case 4:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, LOW);
+          break;
+
+        case 5:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, HIGH);
+          break;
+
+        case 6:
+          digitalWrite(MUX_S0, HIGH);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, LOW);
+          break;
+
+        case 7:
+          digitalWrite(MUX_S0, HIGH);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, LOW);
+          digitalWrite(MUX_S3, HIGH);
+          break;
+
+        case 8:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, LOW);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, LOW);
+          break;
+
+        case 9:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, LOW);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, HIGH);
+          break;
+
+        case 10:
+          digitalWrite(MUX_S0, HIGH);
+          digitalWrite(MUX_S1, LOW);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, LOW);
+          break;
+
+        case 11:
+          digitalWrite(MUX_S0, HIGH);
+          digitalWrite(MUX_S1, LOW);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, HIGH);
+          break;
+
+        case 12:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, LOW);
+          break;
+
+
+        case 13:
+          digitalWrite(MUX_S0, LOW);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, HIGH);
+          break;
+
+        case 14:
+          digitalWrite(MUX_S0, HIGH);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, LOW);
+          break;
+
+        case 15:
+          digitalWrite(MUX_S0, HIGH);
+          digitalWrite(MUX_S1, HIGH);
+          digitalWrite(MUX_S2, HIGH);
+          digitalWrite(MUX_S3, HIGH);
+          break;
       }
 
-      display.setCursor(0, 0);
-      display.setTextColor(WHITE, BLACK);
 
-      display.println(F("Oscillator 1:    "));
-
-      display.println(F("Oscillator 2:    "));
-
-      display.println(F("Oscillator 3:    "));
-
-      display.println(F("Oscillator 4:    "));
-
-      display.println(F("Oscillator 5:    "));
-
-      display.println(F("Oscillator 6:    "));
-
-      display.println(F("Oscillator 7:    "));
-
-      display.println(F("Oscillator 8:    "));
-      display.display();
       if (oscillator > numOscillators) {
         sr.set(AUTOTUNE_LED, LOW);
         autotuneStart = false;
         for (int i = 0; i < 128; i++) {
-          for (int o = 0; o < 2; o++) {
+          for (int o = 0; o < (numOscillators + 1); o++) {
             switch (o) {
               case 0:
                 retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + i);
                 break;
               case 1:
                 retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + i);
+                break;
+              case 2:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
+                break;
+              case 3:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
+                break;
+              case 4:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + i);
+                break;
+              case 5:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + i);
+                break;
+              case 6:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + i);
+                break;
+              case 7:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + i);
+                break;
+              case 8:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + i);
+                break;
+              case 9:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + i);
+                break;
+              case 10:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + i);
+                break;
+              case 11:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + i);
+                break;
+              case 12:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + i);
+                break;
+              case 13:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + i);
+                break;
+              case 14:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + i);
+                break;
+              case 15:
+                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + i);
                 break;
             }
             (autotune_value[i][o]) = retrievedNumber;
@@ -428,6 +808,7 @@ void loop() {
         digitalWrite(MUX_S0, LOW);
         digitalWrite(MUX_S1, LOW);
         digitalWrite(MUX_S2, LOW);
+        digitalWrite(MUX_S3, LOW);
         updateSelection();
       }
     }
@@ -455,12 +836,6 @@ void extrapolate_higher_notes() {
   Serial.println("");
   Serial.println("Start Extrapolation ");
 
-  // while (arraySize < extrapolationLimit + 1) {
-  //   double nextValue = interpolate(arraySize, 1, values[0], arraySize - 1, values[arraySize - 2]);
-  //   values[arraySize - 1] = (int)nextValue;
-  //   arraySize++;
-  // }
-
   while (arraySize < extrapolationLimit + 1) {
     double nextValue = interpolate(arraySize, 1, values[0], arraySize - 1, values[arraySize - 2]);
     values = (int*)realloc(values, (arraySize + 1) * sizeof(int));
@@ -473,8 +848,8 @@ void extrapolate_higher_notes() {
     Serial.print(values[i]);
     Serial.print(" ");
   }
-
   Serial.println();
+
   for (int i = 97; i < 128; ++i) {
 
     frequencyError = values[i];
@@ -492,6 +867,105 @@ void extrapolate_higher_notes() {
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + i);
         Serial.println(retrievedNumber);
         break;
+
+      case 2:
+        storeNegativeNumber((EEPROM_OFFSET + 256 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 3:
+        storeNegativeNumber((EEPROM_OFFSET + 384 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 4:
+        storeNegativeNumber((EEPROM_OFFSET + 512 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 5:
+        storeNegativeNumber((EEPROM_OFFSET + 640 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 6:
+        storeNegativeNumber((EEPROM_OFFSET + 768 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 7:
+        storeNegativeNumber((EEPROM_OFFSET + 896 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 8:
+        storeNegativeNumber((EEPROM_OFFSET + 1024 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 9:
+        storeNegativeNumber((EEPROM_OFFSET + 1152 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 10:
+        storeNegativeNumber((EEPROM_OFFSET + 1280 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 11:
+        storeNegativeNumber((EEPROM_OFFSET + 1408 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 12:
+        storeNegativeNumber((EEPROM_OFFSET + 1536 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 13:
+        storeNegativeNumber((EEPROM_OFFSET + 1664 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 14:
+        storeNegativeNumber((EEPROM_OFFSET + 1792 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + i);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 15:
+        storeNegativeNumber((EEPROM_OFFSET + 1920 + i), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + i);
+        Serial.println(retrievedNumber);
+        break;
+
     }
   }
 
@@ -508,7 +982,7 @@ void startAutotune() {
   oscillator = 0;
   sum1 = 0;
   count1 = 0;
-  tuneNote = 0;
+  tuneNote = 1;
   currentFrequency[tuneNote] = 0.00;
   targetFrequency = 0.00;
   Serial.print("CurrentFrequency ");
@@ -519,6 +993,7 @@ void startAutotune() {
   digitalWrite(MUX_S0, LOW);
   digitalWrite(MUX_S1, LOW);
   digitalWrite(MUX_S2, LOW);
+  digitalWrite(MUX_S3, LOW);
   digitalWriteFast(MUX_ENABLE, HIGH);  // Enable the mux
   delayMicroseconds(100);
 }
@@ -1265,13 +1740,13 @@ void updateTimers() {
 }
 
 void updateVoice1() {
-  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE + (autotune_value[note1][0])));
+  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note1][0]));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data1);
-  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note1][1]));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data1);
-  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * sfAdj[0] + 0.5) + (TM_VALUE));
+  mV = (unsigned int)(((float)(note1 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE));
   sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data1);
   velmV = ((unsigned int)((float)voices[0].velocity) * VEL_SF);
@@ -1280,13 +1755,13 @@ void updateVoice1() {
 }
 
 void updateVoice2() {
-  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note2][1]));
+  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note2][2]));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data2);
-  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note2][3]));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data2);
-  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * sfAdj[1] + 0.5) + (TM_VALUE + TM_AT_VALUE));
+  mV = (unsigned int)(((float)(note2 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data2);
   velmV = ((unsigned int)((float)voices[1].velocity) * VEL_SF);
@@ -1295,13 +1770,13 @@ void updateVoice2() {
 }
 
 void updateVoice3() {
-  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note3][4]));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data3);
-  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note3][5]));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data3);
-  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * sfAdj[2] + 0.5) + (TM_VALUE + TM_AT_VALUE));
+  mV = (unsigned int)(((float)(note3 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data3);
   velmV = ((unsigned int)((float)voices[2].velocity) * VEL_SF);
@@ -1310,13 +1785,13 @@ void updateVoice3() {
 }
 
 void updateVoice4() {
-  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note4][6]));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data4);
-  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note4][7]));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data4);
-  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * sfAdj[3] + 0.5) + (TM_VALUE + TM_AT_VALUE));
+  mV = (unsigned int)(((float)(note4 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data4);
   velmV = ((unsigned int)((float)voices[3].velocity) * VEL_SF);
@@ -1325,13 +1800,13 @@ void updateVoice4() {
 }
 
 void updateVoice5() {
-  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note5][8]));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data5);
-  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note5][9]));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data5);
-  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * sfAdj[4] + 0.5) + (TM_VALUE + TM_AT_VALUE));
+  mV = (unsigned int)(((float)(note5 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data5);
   velmV = ((unsigned int)((float)voices[4].velocity) * VEL_SF);
@@ -1340,13 +1815,13 @@ void updateVoice5() {
 }
 
 void updateVoice6() {
-  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note6][10]));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data6);
-  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note6][11]));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data6);
-  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * sfAdj[5] + 0.5) + (TM_VALUE + TM_AT_VALUE));
+  mV = (unsigned int)(((float)(note6 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data6);
   velmV = ((unsigned int)((float)voices[5].velocity) * VEL_SF);
@@ -1355,13 +1830,13 @@ void updateVoice6() {
 }
 
 void updateVoice7() {
-  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note7][12]));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data7);
-  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note7][13]));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data7);
-  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * sfAdj[6] + 0.5) + (TM_VALUE + TM_AT_VALUE));
+  mV = (unsigned int)(((float)(note7 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data7);
   velmV = ((unsigned int)((float)voices[6].velocity) * VEL_SF);
@@ -1370,13 +1845,13 @@ void updateVoice7() {
 }
 
 void updateVoice8() {
-  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note8][14]));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE1, sample_data8);
-  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE));
+  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (bend_data + FM_VALUE + FM_AT_VALUE) + (autotune_value[note8][15]));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE2, sample_data8);
-  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * sfAdj[7] + 0.5) + (TM_VALUE + TM_AT_VALUE));
+  mV = (unsigned int)(((float)(note8 + transpose + realoctave) * NOTE_SF * 1.00 + 0.5) + (TM_VALUE + TM_AT_VALUE));
   sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
   outputDAC(DAC_NOTE4, sample_data8);
   velmV = ((unsigned int)((float)voices[7].velocity) * VEL_SF);
@@ -1472,14 +1947,14 @@ void outputDAC(int CHIP_SELECT, uint32_t sample_data) {
 }
 
 int setCh;
-char setMode[6];
+char setMode[5];
 
 void updateMenu() {  // Called whenever button is pushed
 
   if (highlightEnabled) {  // Highlight is active, choose selection
     switch (menu) {
       case SETTINGS:
-        switch (mod(encoderPos, 6)) {
+        switch (mod(encoderPos, 5)) {
           case 0:
             menu = KEYBOARD_MODE_SET_CH;
             break;
@@ -1494,9 +1969,6 @@ void updateMenu() {  // Called whenever button is pushed
             break;
           case 4:
             menu = POLYPHONY_COUNT;
-            break;
-          case 5:
-            menu = SCALE_FACTOR;
             break;
         }
         break;
@@ -1532,28 +2004,6 @@ void updateMenu() {  // Called whenever button is pushed
         setCh = mod(encoderPos, 7);
         menu = SETTINGS;
         EEPROM.write(ADDR_NOTE_NUMBER, polyphony);
-        break;
-
-      case SCALE_FACTOR:
-        setCh = mod(encoderPos, 7);
-        switch (setCh) {
-          case 0:
-          case 1:
-          case 2:
-          case 3:
-          case 4:
-          case 5:
-            menu = SCALE_FACTOR_SET_CH;
-            break;
-          case 6:
-            menu = SETTINGS;
-            break;
-        }
-        break;
-
-      case SCALE_FACTOR_SET_CH:  // Save scale factor to EEPROM
-        menu = SCALE_FACTOR;
-        EEPROM.put(ADDR_SF_ADJUST + setCh * sizeof(float), sfAdj[setCh]);
         break;
     }
   } else {  // Highlight wasn't visible, reinitialize highlight timer
@@ -1617,7 +2067,6 @@ void updateSelection() {  // Called whenever encoder is turned
       display.println(F(" "));
       display.setTextColor(WHITE, BLACK);
 
-
       if (menu == SETTINGS) setHighlight(3, 6);
       display.print(F("Octave Adjust "));
 
@@ -1635,62 +2084,6 @@ void updateSelection() {  // Called whenever encoder is turned
       display.print(polyphony + 2);
       display.println(F(" "));
       display.setTextColor(WHITE, BLACK);
-
-      if (menu == SETTINGS) setHighlight(5, 6);
-      else display.setTextColor(WHITE, BLACK);
-      display.println(F("Scale Factor     "));
-      break;
-
-    case SCALE_FACTOR_SET_CH:
-      if ((encoderPos > encoderPosPrev) && (sfAdj[setCh] < 1.1))
-        sfAdj[setCh] += 0.001f;
-      else if ((encoderPos < encoderPosPrev) && (sfAdj[setCh] > 0.9))
-        sfAdj[setCh] -= 0.001f;
-
-    case SCALE_FACTOR:
-      display.setCursor(0, 0);
-      display.setTextColor(WHITE, BLACK);
-      display.print(F("SET SCALE FACTOR"));
-      display.setCursor(0, 8);
-
-      if (menu == SCALE_FACTOR) setHighlight(0, 7);
-      display.print(F("Note 1:    "));
-      if ((menu == SCALE_FACTOR_SET_CH) && setCh == 0) display.setTextColor(BLACK, WHITE);
-      display.println(sfAdj[0], 3);
-
-      if (menu == SCALE_FACTOR) setHighlight(1, 7);
-      else display.setTextColor(WHITE, BLACK);
-      display.print(F("Note 2:    "));
-      if ((menu == SCALE_FACTOR_SET_CH) && setCh == 1) display.setTextColor(BLACK, WHITE);
-      display.println(sfAdj[1], 3);
-
-      if (menu == SCALE_FACTOR) setHighlight(2, 7);
-      else display.setTextColor(WHITE, BLACK);
-      display.print(F("Note 3:    "));
-      if ((menu == SCALE_FACTOR_SET_CH) && setCh == 2) display.setTextColor(BLACK, WHITE);
-      display.println(sfAdj[2], 3);
-
-      if (menu == SCALE_FACTOR) setHighlight(3, 7);
-      else display.setTextColor(WHITE, BLACK);
-      display.print(F("Note 4:    "));
-      if ((menu == SCALE_FACTOR_SET_CH) && setCh == 3) display.setTextColor(BLACK, WHITE);
-      display.println(sfAdj[3], 3);
-
-      if (menu == SCALE_FACTOR) setHighlight(4, 7);
-      else display.setTextColor(WHITE, BLACK);
-      display.print(F("Note 5:    "));
-      if ((menu == SCALE_FACTOR_SET_CH) && setCh == 4) display.setTextColor(BLACK, WHITE);
-      display.println(sfAdj[4], 3);
-
-      if (menu == SCALE_FACTOR) setHighlight(5, 7);
-      else display.setTextColor(WHITE, BLACK);
-      display.print(F("Note 6:    "));
-      if ((menu == SCALE_FACTOR_SET_CH) && setCh == 5) display.setTextColor(BLACK, WHITE);
-      display.println(sfAdj[5], 3);
-
-      if (menu == SCALE_FACTOR) setHighlight(6, 7);
-      else display.setTextColor(WHITE, BLACK);
-      display.print(F("Return      "));
   }
   display.display();
 }

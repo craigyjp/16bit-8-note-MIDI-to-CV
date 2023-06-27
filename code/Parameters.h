@@ -132,29 +132,23 @@ float midi_to_freqs[128][2] = {
   { 127, 6271.93 },
 };
 
-int8_t autotune_value[128][8];
+int8_t autotune_value[128][16];
 
 boolean autotuneStart = false;
 float sum1 = 0;
 int count1 = 0;
 elapsedMillis timeout;
 
-const unsigned long measurementTime = 1000;  // Measurement time in milliseconds
-
-volatile unsigned long pulseCount = 0;  // Counter for the number of pulses
-unsigned long startTime;                // Start time of the measurement
-
-const int numOscillators = 1;   // Number of oscillators
+const int numOscillators = 8;   // Number of oscillators
 const int numNotes = 128;       // Number of MIDI notes
-const float tuningStep = 0.01;  // Step size for frequency adjustment                          // Scaling factor for DAC voltage calculation
+
 float targetFrequency = 0.00;
-int tuneNote = 0;
+int tuneNote = 1;
 int oscillator;
 int8_t frequencyError;
 
 float currentFrequency[128];
 int EEPROM_OFFSET = 50;
-int autoInput = 0;
 
 
 //
@@ -191,8 +185,6 @@ static int mux1ValuesPrev[MUXCHANNELS] = {};
 static int mux1Read = 0;
 
 int encoderPos, encoderPosPrev;
-
-float sfAdj[8];
 
 int polyphony;
 //int polyphony;
@@ -254,7 +246,7 @@ uint32_t channel_h = 0b00000010011100000000000000000000;
 #define ADDR_GATE_TRIG 0  // (0-7)
 #define ADDR_PITCH_BEND 8
 #define ADDR_CC 9
-#define ADDR_SF_ADJUST 10  // (10-17)
+
 #define ADDR_MASTER_CHAN 18
 #define ADDR_TRANSPOSE 19
 #define ADDR_REAL_TRANSPOSE 20
