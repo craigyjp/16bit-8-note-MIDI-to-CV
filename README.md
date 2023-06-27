@@ -24,15 +24,17 @@ Sustain pedal support over MIDI
 
 MIDI Channel selection or Omni
 
-Poly/Unison/Mono modes with note modes
+Poly/Unison/Mono modes with note priority modes
 
-Poly note variable from 2-8 notes
+Polyphony variable from 2-8 notes, 1 note not required as you already have unison and mono.
 
 Transpose Mode +/- one Octave
 
 Octave shift 0 to -3 Octaves to give 0V on bottom C
 
-Scaling on individual notes to improve tuning
+Oscillator 2 detune (CV outputs 9-16)
+
+Oscillator 2 interval settings 0-12 semitones (CV outputs 9-16)
 
 Up/Down/Select buttons for menu
 
