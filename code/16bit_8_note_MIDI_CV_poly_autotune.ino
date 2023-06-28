@@ -117,7 +117,6 @@ void setup() {
   octoswitch.setCallback(onButtonPress);
 
 
-
   //USB HOST MIDI Class Compliant
   delay(300);  //Wait to turn on USB Host
   myusb.begin();
@@ -193,6 +192,7 @@ void setup() {
     EEPROM.write(ADDR_NOTE_NUMBER, polyphony);
   }
 
+
   for (int o = 0; o < (numOscillators + 1); o++) {
     for (int i = 0; i < 128; i++) {
       switch (o) {
@@ -206,7 +206,6 @@ void setup() {
           retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
           break;
         case 3:
-          //storeNegativeNumber((EEPROM_OFFSET + 384 + i), 100);
           retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
           break;
         case 4:
@@ -625,6 +624,90 @@ void loop() {
         storeNegativeNumber((EEPROM_OFFSET + 384 + tuneNote), frequencyError);
         Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 4:
+        storeNegativeNumber((EEPROM_OFFSET + 512 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 5:
+        storeNegativeNumber((EEPROM_OFFSET + 640 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 6:
+        storeNegativeNumber((EEPROM_OFFSET + 768 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 7:
+        storeNegativeNumber((EEPROM_OFFSET + 896 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 8:
+        storeNegativeNumber((EEPROM_OFFSET + 1024 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 9:
+        storeNegativeNumber((EEPROM_OFFSET + 1152 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 10:
+        storeNegativeNumber((EEPROM_OFFSET + 1280 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 11:
+        storeNegativeNumber((EEPROM_OFFSET + 1408 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 12:
+        storeNegativeNumber((EEPROM_OFFSET + 1536 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 13:
+        storeNegativeNumber((EEPROM_OFFSET + 1664 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 14:
+        storeNegativeNumber((EEPROM_OFFSET + 1792 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + tuneNote);
+        Serial.println(retrievedNumber);
+        break;
+
+      case 15:
+        storeNegativeNumber((EEPROM_OFFSET + 1920 + tuneNote), frequencyError);
+        Serial.print("Reading Autotune Value ");
+        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + tuneNote);
         Serial.println(retrievedNumber);
         break;
     }
@@ -1167,6 +1250,10 @@ void myPitchBend(byte channel, int bend) {
 }
 
 void adjustInterval() {
+    if (INTERVAL_POT != INTERVAL) {
+    Serial.print("Interval setting ");
+    Serial.println(INTERVAL_POT);
+  }
   switch (INTERVAL_POT) {
     case 12:
       INTERVAL = 12;
@@ -1220,8 +1307,7 @@ void adjustInterval() {
       INTERVAL = 0;
       break;
   }
-  Serial.print("Interval setting ");
-  Serial.println(INTERVAL);
+
 }
 
 
