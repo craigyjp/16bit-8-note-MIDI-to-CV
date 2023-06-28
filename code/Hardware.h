@@ -65,6 +65,7 @@ ADC *adc = new ADC();
 #define ENC_B 1
 #define ENC_BTN 2
 #define AUTOTUNE_BTN 3
+#define OFFSET_RESET 4
 
 #define MUX_IN A14
 

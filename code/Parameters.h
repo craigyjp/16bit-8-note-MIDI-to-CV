@@ -202,8 +202,10 @@ int octave;
 int realoctave;
 int bend_data;
 int note1, note2, note3, note4, note5, note6, note7, note8;
+int oscbnote1, oscbnote2, oscbnote3, oscbnote4, oscbnote5, oscbnote6, oscbnote7, oscbnote8;
 int numPlayingVoices = 0;
 bool sustainOn = false;
+bool reset = false;
 byte sendnote, sendvelocity;
 
 unsigned int velmV;
