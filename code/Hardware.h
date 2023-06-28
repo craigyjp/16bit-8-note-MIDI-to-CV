@@ -5,7 +5,7 @@ ADC *adc = new ADC();
 
 // Scale Factor will generate 0.25v/octave
 // 10 octave keyboard on a 3.3v powered DAC
-#define NOTE_SF 273.50f
+#define NOTE_SF 271.5
 #define VEL_SF 256.0
 
 // Voices available

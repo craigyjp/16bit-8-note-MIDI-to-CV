@@ -139,11 +139,13 @@ float sum1 = 0;
 int count1 = 0;
 elapsedMillis timeout;
 
-const int numOscillators = 8;   // Number of oscillators
+const int numOscillators = 9;   // Number of oscillators - 1 as they start at 0
 const int numNotes = 128;       // Number of MIDI notes
 
 float targetFrequency = 0.00;
-int tuneNote = 1;
+int tuneNote = 0;
+
+int VOLTOFFSET = 3270;
 int oscillator;
 int8_t frequencyError;
 
@@ -207,6 +209,23 @@ int numPlayingVoices = 0;
 bool sustainOn = false;
 bool reset = false;
 byte sendnote, sendvelocity;
+
+float oscillator1a = 1.000;
+float oscillator2a = 1.000;
+float oscillator3a = 1.000;
+float oscillator4a = 1.002;
+float oscillator5a = 1.004;
+float oscillator6a = 1.000;
+float oscillator7a = 1.004;
+float oscillator8a = 1.004;
+float oscillator1b = 1.000;
+float oscillator2b = 0.992;
+float oscillator3b = 1.000;
+float oscillator4b = 1.005;
+float oscillator5b = 1.000;
+float oscillator6b = 1.000;
+float oscillator7b = 1.006;
+float oscillator8b = 1.000;
 
 unsigned int velmV;
 unsigned int mV;
