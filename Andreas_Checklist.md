@@ -1,0 +1,25 @@
+
+- MIDI to CV basic functions
+- - pitch 
+  - velocity
+  - gate
+  - trigger
+  - modulation wheel
+  - channel aftertouch
+  - poly aftertouch
+  - sustain pedal
+  - damper pedal
+  - sostenuto pdeal
+  - expression pedal
+  - MIDI controls
+  - time code ticks
+- MIDI to CV advanced features
+- - tune input
+  - tune comparison
+  - tune correction output
+  - pitch quantizer
+  - custom scales
+  - polyphonic modes (quietest/loudest, highest/lowest, farthest/nearest, ...)
+  - voice bunching (poly 8, poly 4, poly 2, unisono)
+  - arpeggio
+  - portamento (glide, stepped, time-quantized, scale-quantized)
