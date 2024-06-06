@@ -308,17 +308,19 @@ void loop() {
     display.print(F("Note Number :"));
     display.println(tuneNote);
     display.print(F("Tune value  :"));
+    display.setCursor(78, 32);
+    display.print("    ");
     display.display();
 
-    Serial.print("Oscillator ");
-    Serial.println(oscillator);
-    Serial.print("MIDI note ");
-    Serial.println(tuneNote);
+    // Serial.print("Oscillator ");
+    // Serial.println(oscillator);
+    // Serial.print("MIDI note ");
+    // Serial.println(tuneNote);
 
 
     targetFrequency = midi_to_freqs[tuneNote][1];
-    Serial.print("Updating Oscillator For Note ");
-    Serial.println(tuneNote);
+    // Serial.print("Updating Oscillator For Note ");
+    // Serial.println(tuneNote);
     switch (oscillator) {
       // Board 1
       case 0:
@@ -418,30 +420,93 @@ void loop() {
         break;
     }
 
-    delayMicroseconds(100);
-    Serial.print("Current Stored Autotune ");
-    Serial.println(autotune_value[tuneNote][oscillator]);
+    delayMicroseconds(10);
+    // Serial.print("Current Stored Autotune ");
+    // Serial.println(autotune_value[tuneNote][oscillator]);
     frequencyError = autotune_value[tuneNote][oscillator];
-
     while (currentFrequency[tuneNote] != targetFrequency) {
 
-      while (count1 < 10) {
-        if (autosignal.available()) {
-          sum1 = sum1 + autosignal.read();
-          count1 = count1 + 1;
+      if (tuneNote <= 24) {
+        while (count1 < 3) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
         }
       }
 
+      if (tuneNote > 24 && tuneNote <= 36) {
+        while (count1 < 7) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
+        }
+      }
+
+      if (tuneNote > 36 && tuneNote <= 48) {
+        while (count1 < 10) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
+        }
+      }
+
+      if (tuneNote > 48 && tuneNote <= 60) {
+        while (count1 < 15) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
+        }
+      }
+
+      if (tuneNote > 60 && tuneNote <= 72) {
+        while (count1 < 20) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
+        }
+      }
+
+      if (tuneNote > 72 && tuneNote <= 84) {
+        while (count1 < 25) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
+        }
+      }
+
+      if (tuneNote > 84 && tuneNote <= 90) {
+        while (count1 < 30) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
+        }
+      }
+
+      if (tuneNote > 90) {
+        while (count1 < 40) {
+          if (autosignal.available()) {
+            sum1 = sum1 + autosignal.read();
+            count1 = count1 + 1;
+          }
+        }
+      }
 
       if (count1 > 0) {
-        Serial.print("Frequency Input ");
+        // Serial.print("Frequency Input ");
 
         currentFrequency[tuneNote] = autosignal.countToFrequency(sum1 / count1);
         currentFrequency[tuneNote] = ((int)(currentFrequency[tuneNote] * 100)) / 100.0;
 
-        Serial.println(currentFrequency[tuneNote], 2);
-        Serial.print("Target Frequency ");
-        Serial.println(targetFrequency, 2);
+        // Serial.println(currentFrequency[tuneNote], 2);
+        // Serial.print("Target Frequency ");
+        // Serial.println(targetFrequency, 2);
 
         sum1 = 0;
         count1 = 0;
@@ -452,9 +517,6 @@ void loop() {
         if (currentFrequency[tuneNote] < targetFrequency) {
           frequencyError++;
         }
-        Serial.print("Autotune value ");
-        Serial.println(frequencyError);
-        Serial.println("");
 
         display.setCursor(78, 32);
         display.print(frequencyError);
@@ -463,8 +525,7 @@ void loop() {
       } else {
         Serial.print("(no pulses)");
       }
-      Serial.print("Updating oscillator frequency ");
-      Serial.println(tuneNote);
+
       switch (oscillator) {
 
         case 0:
@@ -563,79 +624,79 @@ void loop() {
           outputDAC(DAC_NOTE2, sample_data8);
           break;
       }
-      delayMicroseconds(100);
+      delayMicroseconds(10);
     }
-    Serial.print("Storing Autotune Value ");
-    Serial.println(frequencyError);
+    // Serial.print("Storing Autotune Value ");
+    // Serial.println(frequencyError);
     switch (oscillator) {
       case 0:
         storeNegativeNumber((EEPROM_OFFSET + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 1:
         storeNegativeNumber((EEPROM_OFFSET + 128 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 2:
         storeNegativeNumber((EEPROM_OFFSET + 256 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 3:
         storeNegativeNumber((EEPROM_OFFSET + 384 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 4:
         storeNegativeNumber((EEPROM_OFFSET + 512 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 5:
         storeNegativeNumber((EEPROM_OFFSET + 640 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 6:
         storeNegativeNumber((EEPROM_OFFSET + 768 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 7:
         storeNegativeNumber((EEPROM_OFFSET + 896 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 8:
         storeNegativeNumber((EEPROM_OFFSET + 1024 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 9:
         storeNegativeNumber((EEPROM_OFFSET + 1152 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 10:
@@ -647,45 +708,45 @@ void loop() {
 
       case 11:
         storeNegativeNumber((EEPROM_OFFSET + 1408 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 12:
         storeNegativeNumber((EEPROM_OFFSET + 1536 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 13:
         storeNegativeNumber((EEPROM_OFFSET + 1664 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 14:
         storeNegativeNumber((EEPROM_OFFSET + 1792 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
 
       case 15:
         storeNegativeNumber((EEPROM_OFFSET + 1920 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
+        // Serial.print("Reading Autotune Value ");
         retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + tuneNote);
-        Serial.println(retrievedNumber);
+        // Serial.println(retrievedNumber);
         break;
     }
 
     tuneNote++;
 
-    if (tuneNote > 96) {
+    if (tuneNote > 100) {
       tuneNote = 0;
-      //autotune_value[0][oscillator] = autotune_value[1][oscillator]
+
       extrapolate_higher_notes();
 
       oscillator++;
@@ -695,8 +756,8 @@ void loop() {
       }
       sum1 = 0;
       count1 = 0;
-      Serial.print("Incrementing the MUX ");
-      Serial.println(oscillator);
+      // Serial.print("Incrementing the MUX ");
+      // Serial.println(oscillator);
 
       selectMuxInput();
 
@@ -772,13 +833,13 @@ void loop() {
 
 void extrapolate_higher_notes() {
 
-  int* values = (int*)malloc(97 * sizeof(int));
-  int arraySize = 97;
+  int* values = (int*)malloc(101 * sizeof(int));
+  int arraySize = 101;
   int extrapolationLimit = 128;
 
   // Initialize the original range values
   for (int i = 0; i < arraySize; ++i) {
-    values[i] = i;
+    values[i] = 0;
   }
 
   Serial.print("OScillator Number ");
@@ -805,7 +866,7 @@ void extrapolate_higher_notes() {
   }
   Serial.println();
 
-  for (int i = 97; i < 128; ++i) {
+  for (int i = 101; i < 128; ++i) {
 
     frequencyError = values[i];
     switch (oscillator) {
