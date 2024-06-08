@@ -1,7 +1,7 @@
 /*
       8 note Poly MIDI to CV
 
-      Version 0.8
+      Version 1.4
 
       Copyright (C) 2020 Craig Barnes
 
@@ -18,7 +18,7 @@
       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
       GNU General Public License <http://www.gnu.org/licenses/> for more details.
 */
-
+#include <cfloat>  // Include for DBL_MAX
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
@@ -29,6 +29,7 @@
 #include <RoxMux.h>
 #include <ShiftRegister74HC595.h>
 #include <FreqMeasureMulti.h>
+#include <FreqCount.h>
 #include "Parameters.h"
 #include "Hardware.h"
 
@@ -59,6 +60,12 @@ struct VoiceAndNote {
   double noteFreq;  // Note frequency
   int position;
   bool noteOn;
+};
+
+// Struct to store note data with derivatives
+struct NoteData {
+  int value;
+  double derivative;
 };
 
 struct VoiceAndNote voices[NO_OF_VOICES] = {
@@ -102,15 +109,12 @@ RoxOctoswitch<OCTO_TOTAL, BTN_DEBOUNCE> octoswitch;
 ShiftRegister74HC595<3> sr(30, 31, 32);
 FreqMeasureMulti autosignal;
 
-double interpolate(double x, double x1, double y1, double x2, double y2) {
-  return y1 + ((y2 - y1) / (x2 - x1)) * (x - x1);
-}
-
 void setup() {
 
   SPI.begin();
   delay(10);
-  autosignal.begin(22, FREQMEASUREMULTI_INTERLEAVE);
+  autosignal.begin(22, FREQMEASUREMULTI_RAISING);
+  FreqCount.begin(1000000);  // for T4.x/MM, count time in microseconds
   setupHardware();
 
   octoswitch.begin(PIN_DATA, PIN_LOAD, PIN_CLK);
@@ -145,9 +149,6 @@ void setup() {
   Serial.println("USB Client MIDI Listening");
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // OLED I2C Address, may need to change for different device,
-  // Check with I2C_Scanner
-
-  // Wire.setClock(100000L);  // Uncomment to slow down I2C speed
 
   // Read Settings from EEPROM
   for (int i = 0; i < 8; i++) {
@@ -192,76 +193,452 @@ void setup() {
     EEPROM.write(ADDR_NOTE_NUMBER, polyphony);
   }
 
-
-  for (int o = 0; o < (numOscillators + 1); o++) {
-    for (int i = 0; i < 128; i++) {
-      switch (o) {
-        case 0:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + i);
-          break;
-        case 1:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + i);
-          break;
-        case 2:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
-          break;
-        case 3:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
-          break;
-        case 4:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + i);
-          break;
-        case 5:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + i);
-          break;
-        case 6:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + i);
-          break;
-        case 7:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + i);
-          break;
-        case 8:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + i);
-          break;
-        case 9:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + i);
-          break;
-        case 10:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + i);
-          break;
-        case 11:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + i);
-          break;
-        case 12:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + i);
-          break;
-        case 13:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + i);
-          break;
-        case 14:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + i);
-          break;
-        case 15:
-          retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + i);
-          break;
-      }
-      (autotune_value[i][o]) = retrievedNumber;
-      Serial.print("Stored Autotune Value Oscillator ");
-      Serial.print(o);
-      Serial.print(" ");
-      Serial.print(i);
-      Serial.print(" ");
-      Serial.println(autotune_value[i][o]);
-    }
-  }
+  readExtrapolatedValuesFromEEPROM();
 
   menu = SETTINGS;
   updateSelection();
 }
 
+void initializeOscillator(int osc) {
+    int midiNote = A_NOTES[0]; // Start with the first note
+    double targetFrequency = midi_to_freqs[midiNote][1];
+    
+    // Set initial DAC value to get close to the target frequency
+    int initialError = 0; // Adjust this initial error if needed
+    updateOscillator(midiNote, initialError);
+
+    // Print initialization for debugging
+    Serial.print("Initializing Oscillator ");
+    Serial.print(osc);
+    Serial.print(" to Note ");
+    Serial.print(midiNote);
+    Serial.print(" with target frequency ");
+    Serial.println(targetFrequency);
+}
+
+void autotune() {
+
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextColor(WHITE, BLACK);
+  display.println(F("Autotune in progress:"));
+  display.println(F(""));
+  display.print(F("Oscillator  :"));
+  display.print(oscillator / 2 + 1);
+  display.print(oscillator % 2 == 0 ? "A" : "B");
+  display.print("  ");
+  display.println(A_NOTES[tuneNote]);
+
+  display.print(F("Tune value  :"));
+  display.setCursor(78, 32);
+  display.println("    ");
+  display.display();
+
+  int midiNote = A_NOTES[tuneNote];
+  double targetFrequency = midi_to_freqs[midiNote][1];
+      Serial.print("Oscillator : ");
+      Serial.println(oscillator);
+      Serial.print("Note : ");
+      Serial.println(midiNote);
+      switch (oscillator) {
+      // Board 1
+      case 0:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator1a + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data1);
+        break;
+
+      case 1:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator1b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data1);
+        break;
+      // Board 2
+      case 2:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator2a + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data2);
+        break;
+
+      case 3:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator2b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data2);
+        break;
+      // Board 3
+      case 4:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator3a + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data3);
+        break;
+
+      case 5:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator3b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data3);
+        break;
+      // Board 4
+      case 6:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator4b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data4);
+        break;
+
+      case 7:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator4b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data4);
+        break;
+      // Board 5
+      case 8:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator5a + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data5);
+        break;
+
+      case 9:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator5b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data5);
+        break;
+      // Board 6
+      case 10:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator6a + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data6);
+        break;
+
+      case 11:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator6b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data6);
+        break;
+      // Board 7
+      case 12:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator7a + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data7);
+        break;
+
+      case 13:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator7b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data7);
+        break;
+      // Board 8
+      case 14:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator8a + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE1, sample_data8);
+        break;
+
+      case 15:
+        mV = (unsigned int)(((float)(midiNote)*NOTE_SF * oscillator8b + 0.5) + (VOLTOFFSET + autotune_value[midiNote][oscillator]));
+        sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+        outputDAC(DAC_NOTE2, sample_data8);
+        break;
+    }
+  delay(100);
+  int minError = -512;
+  int maxError = 512;
+  int bestError = 0;
+  double bestFreqDiff = DBL_MAX;
+
+  while (minError <= maxError) {
+    int midError = (minError + maxError) / 2;
+    updateOscillator(midiNote, midError);
+      // Wait for frequency to stabilize
+      delay(100);
+    double measuredFreq = measureFrequency();
+
+    double freqDiff = abs(measuredFreq - targetFrequency);
+    if (freqDiff < bestFreqDiff) {
+      bestFreqDiff = freqDiff;
+      bestError = midError;
+    }
+
+    if (measuredFreq < targetFrequency) {
+      minError = midError + 1;
+    } else if (measuredFreq > targetFrequency) {
+      maxError = midError - 1;
+    } else {
+      bestError = midError;
+      break;
+    }
+  }
+  
+
+  autotune_value[midiNote][oscillator] = bestError;
+
+  tuneNote++;
+  if (tuneNote >= A_NOTES_COUNT) {
+    tuneNote = 0;
+    oscillator++;
+    if (oscillator > numOscillators) {
+      autotuneStart = false;
+      extrapolateNotes();
+      Serial.println("Auto Tune Finished");
+      digitalWriteFast(MUX_ENABLE, LOW);  // Disable the mux
+      sr.set(AUTOTUNE_LED, LOW);
+      updateSelection();
+    } else {
+      digitalWriteFast(MUX_ENABLE, LOW);
+      selectMuxInput();
+      delay(100);
+      digitalWriteFast(MUX_ENABLE, HIGH);
+    }
+  }
+}
+
+double measureFrequency() {
+  int count = 0;
+  double sum = 0;
+
+  if (A_NOTES[tuneNote] == 33) {
+      while (count < 5) {
+        if (autosignal.available()) {
+          sum += autosignal.read();
+          count++;
+        }
+      }
+      measuredFrequency = autosignal.countToFrequency(sum / count);
+    }
+
+  if (A_NOTES[tuneNote] == 45) {
+      while (count < 7) {
+        if (autosignal.available()) {
+          sum += autosignal.read();
+          count++;
+        }
+      }
+      measuredFrequency = autosignal.countToFrequency(sum / count);
+    }
+
+  if (A_NOTES[tuneNote] == 57) {
+      while (count < 15) {
+        if (autosignal.available()) {
+          sum += autosignal.read();
+          count++;
+        }
+      }
+      measuredFrequency = autosignal.countToFrequency(sum / count);
+    }
+
+  if (A_NOTES[tuneNote] == 69) {
+      while (count < 20) {
+        if (autosignal.available()) {
+          sum += autosignal.read();
+          count++;
+        }
+      }
+      measuredFrequency = autosignal.countToFrequency(sum / count);
+    }
+
+  if (A_NOTES[tuneNote] == 81) {
+      while (count < 25) {
+        if (autosignal.available()) {
+          sum += autosignal.read();
+          count++;
+        }
+      }
+      measuredFrequency = autosignal.countToFrequency(sum / count);
+    }
+
+  if (A_NOTES[tuneNote] == 93) {
+      while (count < 30) {
+        if (autosignal.available()) {
+          sum += autosignal.read();
+          count++;
+        }
+      }
+      measuredFrequency = autosignal.countToFrequency(sum / count);
+    }
+
+  if (A_NOTES[tuneNote] == 105) {
+        if (FreqCount.available()) {
+          measuredFrequency = FreqCount.read();
+        }
+    }
+
+  if (A_NOTES[tuneNote] == 117) {
+        if (FreqCount.available()) {
+          measuredFrequency = FreqCount.read();
+        }
+    }
+
+  return measuredFrequency;
+}
+
+void updateOscillator(int note, int error) {
+  switch (oscillator) {
+    case 0:
+      setDAC(DAC_NOTE1, note, error, oscillator1a, channel_a);
+      break;
+    case 1:
+      setDAC(DAC_NOTE2, note, error, oscillator1b, channel_a);
+      break;
+    case 2:
+      setDAC(DAC_NOTE1, note, error, oscillator2a, channel_b);
+      break;
+    case 3:
+      setDAC(DAC_NOTE2, note, error, oscillator2b, channel_b);
+      break;
+    case 4:
+      setDAC(DAC_NOTE1, note, error, oscillator3a, channel_c);
+      break;
+    case 5:
+      setDAC(DAC_NOTE2, note, error, oscillator3b, channel_c);
+      break;
+    case 6:
+      setDAC(DAC_NOTE1, note, error, oscillator4a, channel_d);
+      break;
+    case 7:
+      setDAC(DAC_NOTE2, note, error, oscillator4b, channel_d);
+      break;
+    case 8:
+      setDAC(DAC_NOTE1, note, error, oscillator5a, channel_e);
+      break;
+    case 9:
+      setDAC(DAC_NOTE2, note, error, oscillator5b, channel_e);
+      break;
+    case 10:
+      setDAC(DAC_NOTE1, note, error, oscillator6a, channel_f);
+      break;
+    case 11:
+      setDAC(DAC_NOTE2, note, error, oscillator6b, channel_f);
+      break;
+    case 12:
+      setDAC(DAC_NOTE1, note, error, oscillator7a, channel_g);
+      break;
+    case 13:
+      setDAC(DAC_NOTE2, note, error, oscillator7b, channel_g);
+      break;
+    case 14:
+      setDAC(DAC_NOTE1, note, error, oscillator8a, channel_h);
+      break;
+    case 15:
+      setDAC(DAC_NOTE2, note, error, oscillator8b, channel_h);
+      break;
+  }
+}
+
+void setDAC(int chipSelect, int note, int error, float oscillator, uint32_t channel) {
+  int mV = (int)(((float)(note)*NOTE_SF * oscillator + 0.5) + (VOLTOFFSET + error));
+  mV = constrain(mV, 0, 65535);  // Ensure mV is within DAC range (0 to 65535 for a 16-bit DAC)
+  uint32_t sampleData = (channel & 0xFFF0000F) | (((mV)&0xFFFF) << 4);
+
+  outputDAC(chipSelect, sampleData);
+}
+
+// Function to compute finite differences for derivatives
+void computeDerivatives(NoteData noteData[], int size) {
+  for (int i = 1; i < size - 1; ++i) {
+    noteData[i].derivative = (noteData[i + 1].value - noteData[i - 1].value) / 2.0;
+  }
+  noteData[0].derivative = noteData[1].value - noteData[0].value;
+  noteData[size - 1].derivative = noteData[size - 1].value - noteData[size - 2].value;
+}
+
+// Cubic Hermite interpolation
+double cubicHermite(double t, double y0, double y1, double m0, double m1) {
+  double t2 = t * t;
+  double t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * m1;
+}
+
+void extrapolateNotes() {
+  for (int o = 0; o < (numOscillators + 1); o++) {
+    NoteData noteData[A_NOTES_COUNT];
+
+    // Initialize note data with autotune values
+    for (int i = 0; i < A_NOTES_COUNT; i++) {
+      int note = A_NOTES[i];
+      noteData[i].value = autotune_value[note][o];
+    }
+
+    // Compute derivatives for Hermite interpolation
+    computeDerivatives(noteData, A_NOTES_COUNT);
+
+    // Interpolate between known points
+    for (int i = 0; i < A_NOTES_COUNT - 1; i++) {
+      int start = A_NOTES[i];
+      int end = A_NOTES[i + 1];
+      int startValue = noteData[i].value;
+      int endValue = noteData[i + 1].value;
+      double startDerivative = noteData[i].derivative;
+      double endDerivative = noteData[i + 1].derivative;
+
+      for (int j = start; j <= end; j++) {
+        double t = static_cast<double>(j - start) / (end - start);
+        autotune_value[j][o] = cubicHermite(t, startValue, endValue, startDerivative, endDerivative);
+      }
+    }
+
+    // Fill values before the first autotuned note
+    for (int i = 0; i < A_NOTES[0]; i++) {
+      autotune_value[i][o] = autotune_value[A_NOTES[0]][o];
+    }
+
+    // Fill values after the last autotuned note
+    for (int i = A_NOTES[A_NOTES_COUNT - 1] + 1; i < 128; i++) {
+      autotune_value[i][o] = autotune_value[A_NOTES[A_NOTES_COUNT - 1]][o];
+    }
+  }
+  storeExtrapolatedValuesToEEPROM();
+}
+
+
+double interpolate(double x, double x1, double y1, double x2, double y2) {
+  return y1 + ((y2 - y1) / (x2 - x1)) * (x - x1);
+}
+
+void storeExtrapolatedValuesToEEPROM() {
+  int address = EEPROM_OFFSET;
+
+  for (int o = 0; o < (numOscillators + 1); o++) {
+    for (int i = 0; i < 128; i++) {
+      if (address < EEPROM.length()) {
+        int8_t value = autotune_value[i][o];
+        uint8_t eepromValue = value + 128; // Offset to fit in range 0-255
+        EEPROM.write(address, eepromValue);
+        address++;
+      } else {
+        // EEPROM overflow, handle error
+        Serial.println("EEPROM overflow error");
+        return;
+      }
+    }
+  }
+  
+  Serial.println("Data successfully written to EEPROM");
+}
+
+void readExtrapolatedValuesFromEEPROM() {
+  int address = EEPROM_OFFSET;
+
+  for (int o = 0; o < (numOscillators + 1); o++) {
+    for (int i = 0; i < 128; i++) {
+      if (address < EEPROM.length()) {
+        uint8_t eepromValue = EEPROM.read(address);
+        int8_t value = eepromValue - 128; // Reverse the offset
+        autotune_value[i][o] = value;
+        address++;
+      } else {
+        // EEPROM overflow, handle error
+        Serial.println("EEPROM read error");
+        return;
+      }
+    }
+  }
+  
+  Serial.println("Data successfully read from EEPROM");
+}
+
 void loop() {
 
-  if (!autotuneStart) {
+  if (autotuneStart) {
+    autotune();
+  } else {
     updateTimers();
     menuTimeOut();
     myusb.Task();
@@ -281,752 +658,68 @@ void loop() {
     updateVoice8();
     octoswitch.update();
   }
-
-  if (autotuneStart) {
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.setTextColor(WHITE, BLACK);
-    display.println(F("Autotune in progress:"));
-    display.println(F(""));
-    display.print(F("Oscillator  :"));
-    if (oscillator == 0) display.println("1A");
-    if (oscillator == 1) display.println("1B");
-    if (oscillator == 2) display.println("2A");
-    if (oscillator == 3) display.println("2B");
-    if (oscillator == 4) display.println("3A");
-    if (oscillator == 5) display.println("3B");
-    if (oscillator == 6) display.println("4A");
-    if (oscillator == 7) display.println("4B");
-    if (oscillator == 8) display.println("5A");
-    if (oscillator == 9) display.println("5B");
-    if (oscillator == 10) display.println("6A");
-    if (oscillator == 11) display.println("6B");
-    if (oscillator == 12) display.println("7A");
-    if (oscillator == 13) display.println("7B");
-    if (oscillator == 14) display.println("8A");
-    if (oscillator == 15) display.println("8B");
-    display.print(F("Note Number :"));
-    display.println(tuneNote);
-    display.print(F("Tune value  :"));
-    display.setCursor(78, 32);
-    display.print("    ");
-    display.display();
-
-    // Serial.print("Oscillator ");
-    // Serial.println(oscillator);
-    // Serial.print("MIDI note ");
-    // Serial.println(tuneNote);
-
-
-    targetFrequency = midi_to_freqs[tuneNote][1];
-    // Serial.print("Updating Oscillator For Note ");
-    // Serial.println(tuneNote);
-    switch (oscillator) {
-      // Board 1
-      case 0:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator1a + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data1);
-        break;
-
-      case 1:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator1b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data1);
-        break;
-      // Board 2
-      case 2:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator2a + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data2);
-        break;
-
-      case 3:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator2b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data2);
-        break;
-      // Board 3
-      case 4:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator3a + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data3);
-        break;
-
-      case 5:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator3b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data3);
-        break;
-      // Board 4
-      case 6:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator4b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data4);
-        break;
-
-      case 7:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator4b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data4);
-        break;
-      // Board 5
-      case 8:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator5a + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data5);
-        break;
-
-      case 9:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator5b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data5);
-        break;
-      // Board 6
-      case 10:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator6a + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data6);
-        break;
-
-      case 11:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator6b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data6);
-        break;
-      // Board 7
-      case 12:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator7a + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data7);
-        break;
-
-      case 13:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator7b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data7);
-        break;
-      // Board 8
-      case 14:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator8a + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE1, sample_data8);
-        break;
-
-      case 15:
-        mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator8b + 0.5) + (VOLTOFFSET + autotune_value[tuneNote][oscillator]));
-        sample_data8 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-        outputDAC(DAC_NOTE2, sample_data8);
-        break;
-    }
-
-    delayMicroseconds(10);
-    // Serial.print("Current Stored Autotune ");
-    // Serial.println(autotune_value[tuneNote][oscillator]);
-    frequencyError = autotune_value[tuneNote][oscillator];
-    while (currentFrequency[tuneNote] != targetFrequency) {
-
-      if (tuneNote <= 24) {
-        while (count1 < 3) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (tuneNote > 24 && tuneNote <= 36) {
-        while (count1 < 7) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (tuneNote > 36 && tuneNote <= 48) {
-        while (count1 < 10) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (tuneNote > 48 && tuneNote <= 60) {
-        while (count1 < 15) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (tuneNote > 60 && tuneNote <= 72) {
-        while (count1 < 20) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (tuneNote > 72 && tuneNote <= 84) {
-        while (count1 < 25) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (tuneNote > 84 && tuneNote <= 90) {
-        while (count1 < 30) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (tuneNote > 90) {
-        while (count1 < 40) {
-          if (autosignal.available()) {
-            sum1 = sum1 + autosignal.read();
-            count1 = count1 + 1;
-          }
-        }
-      }
-
-      if (count1 > 0) {
-        // Serial.print("Frequency Input ");
-
-        currentFrequency[tuneNote] = autosignal.countToFrequency(sum1 / count1);
-        currentFrequency[tuneNote] = ((int)(currentFrequency[tuneNote] * 100)) / 100.0;
-
-        // Serial.println(currentFrequency[tuneNote], 2);
-        // Serial.print("Target Frequency ");
-        // Serial.println(targetFrequency, 2);
-
-        sum1 = 0;
-        count1 = 0;
-        // Modify the values of A and B inside the loop
-        if (currentFrequency[tuneNote] > targetFrequency) {
-          frequencyError--;
-        }
-        if (currentFrequency[tuneNote] < targetFrequency) {
-          frequencyError++;
-        }
-
-        display.setCursor(78, 32);
-        display.print(frequencyError);
-
-        display.display();
-      } else {
-        Serial.print("(no pulses)");
-      }
-
-      switch (oscillator) {
-
-        case 0:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator1a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data1);
-          break;
-
-        case 1:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator1b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data1);
-          break;
-
-        case 2:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator2a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data2);
-          break;
-
-        case 3:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator2b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data2 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data2);
-          break;
-
-        case 4:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator3a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data3);
-          break;
-
-        case 5:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator3b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data3 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data3);
-          break;
-
-        case 6:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator4a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data4);
-          break;
-
-        case 7:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator4b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data4 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data4);
-          break;
-
-        case 8:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator5a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data5);
-          break;
-
-        case 9:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator5b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data5 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data5);
-          break;
-
-        case 10:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator6a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data6);
-          break;
-
-        case 11:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator6b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data6 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data6);
-          break;
-
-        case 12:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator7a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data7);
-          break;
-
-        case 13:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator7b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data7 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data7);
-          break;
-
-        case 14:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator8a + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data8 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE1, sample_data8);
-          break;
-
-        case 15:
-          mV = (unsigned int)(((float)(tuneNote)*NOTE_SF * oscillator8b + 0.5) + VOLTOFFSET + frequencyError);
-          sample_data8 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
-          outputDAC(DAC_NOTE2, sample_data8);
-          break;
-      }
-      delayMicroseconds(10);
-    }
-    // Serial.print("Storing Autotune Value ");
-    // Serial.println(frequencyError);
-    switch (oscillator) {
-      case 0:
-        storeNegativeNumber((EEPROM_OFFSET + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 1:
-        storeNegativeNumber((EEPROM_OFFSET + 128 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 2:
-        storeNegativeNumber((EEPROM_OFFSET + 256 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 3:
-        storeNegativeNumber((EEPROM_OFFSET + 384 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 4:
-        storeNegativeNumber((EEPROM_OFFSET + 512 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 5:
-        storeNegativeNumber((EEPROM_OFFSET + 640 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 6:
-        storeNegativeNumber((EEPROM_OFFSET + 768 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 7:
-        storeNegativeNumber((EEPROM_OFFSET + 896 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 8:
-        storeNegativeNumber((EEPROM_OFFSET + 1024 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 9:
-        storeNegativeNumber((EEPROM_OFFSET + 1152 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 10:
-        storeNegativeNumber((EEPROM_OFFSET + 1280 + tuneNote), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + tuneNote);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 11:
-        storeNegativeNumber((EEPROM_OFFSET + 1408 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 12:
-        storeNegativeNumber((EEPROM_OFFSET + 1536 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 13:
-        storeNegativeNumber((EEPROM_OFFSET + 1664 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 14:
-        storeNegativeNumber((EEPROM_OFFSET + 1792 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-
-      case 15:
-        storeNegativeNumber((EEPROM_OFFSET + 1920 + tuneNote), frequencyError);
-        // Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + tuneNote);
-        // Serial.println(retrievedNumber);
-        break;
-    }
-
-    tuneNote++;
-
-    if (tuneNote > 100) {
-      tuneNote = 0;
-
-      extrapolate_higher_notes();
-
-      oscillator++;
-      targetFrequency = 0.00;
-      for (int i = 0; i < 128; i++) {
-        currentFrequency[i] = 0.00;
-      }
-      sum1 = 0;
-      count1 = 0;
-      // Serial.print("Incrementing the MUX ");
-      // Serial.println(oscillator);
-
-      selectMuxInput();
-
-      if (oscillator > numOscillators) {
-        sr.set(AUTOTUNE_LED, LOW);
-        autotuneStart = false;
-        for (int i = 0; i < 128; i++) {
-          for (int o = 0; o < (numOscillators + 1); o++) {
-            switch (o) {
-              case 0:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + i);
-                break;
-              case 1:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + i);
-                break;
-              case 2:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
-                break;
-              case 3:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
-                break;
-              case 4:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + i);
-                break;
-              case 5:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + i);
-                break;
-              case 6:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + i);
-                break;
-              case 7:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + i);
-                break;
-              case 8:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + i);
-                break;
-              case 9:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + i);
-                break;
-              case 10:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + i);
-                break;
-              case 11:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + i);
-                break;
-              case 12:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + i);
-                break;
-              case 13:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + i);
-                break;
-              case 14:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + i);
-                break;
-              case 15:
-                retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + i);
-                break;
-            }
-            (autotune_value[i][o]) = retrievedNumber;
-          }
-        }
-        Serial.println("Auto Tune Finished");
-        digitalWriteFast(MUX_ENABLE, LOW);  // Disable the mux
-        digitalWrite(MUX_S0, LOW);
-        digitalWrite(MUX_S1, LOW);
-        digitalWrite(MUX_S2, LOW);
-        digitalWrite(MUX_S3, LOW);
-        updateSelection();
-      }
-    }
-  }
 }
 
-void extrapolate_higher_notes() {
-
-  int* values = (int*)malloc(101 * sizeof(int));
-  int arraySize = 101;
-  int extrapolationLimit = 128;
-
-  // Initialize the original range values
-  for (int i = 0; i < arraySize; ++i) {
-    values[i] = 0;
-  }
-
-  Serial.print("OScillator Number ");
-  Serial.println(oscillator);
-  for (int i = 0; i < arraySize; ++i) {
-    values[i] = autotune_value[i][oscillator];
-    Serial.print(values[i]);
-    Serial.print(" ");
-  }
-  Serial.println("");
-  Serial.println("Start Extrapolation ");
-
-  while (arraySize < extrapolationLimit + 1) {
-    double nextValue = interpolate(arraySize, 1, values[0], arraySize - 1, values[arraySize - 2]);
-    values = (int*)realloc(values, (arraySize + 1) * sizeof(int));
-    values[arraySize - 1] = (int)nextValue;
-    arraySize++;
-  }
-
-  // Print the extrapolated values
-  for (int i = 0; i < arraySize; ++i) {
-    Serial.print(values[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
-
-  for (int i = 101; i < 128; ++i) {
-
-    frequencyError = values[i];
-    switch (oscillator) {
-      case 0:
-        storeNegativeNumber((EEPROM_OFFSET + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 1:
-        storeNegativeNumber((EEPROM_OFFSET + 128 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 2:
-        storeNegativeNumber((EEPROM_OFFSET + 256 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 3:
-        storeNegativeNumber((EEPROM_OFFSET + 384 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 4:
-        storeNegativeNumber((EEPROM_OFFSET + 512 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 5:
-        storeNegativeNumber((EEPROM_OFFSET + 640 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 6:
-        storeNegativeNumber((EEPROM_OFFSET + 768 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 7:
-        storeNegativeNumber((EEPROM_OFFSET + 896 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 8:
-        storeNegativeNumber((EEPROM_OFFSET + 1024 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 9:
-        storeNegativeNumber((EEPROM_OFFSET + 1152 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 10:
-        storeNegativeNumber((EEPROM_OFFSET + 1280 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 11:
-        storeNegativeNumber((EEPROM_OFFSET + 1408 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 12:
-        storeNegativeNumber((EEPROM_OFFSET + 1536 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 13:
-        storeNegativeNumber((EEPROM_OFFSET + 1664 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 14:
-        storeNegativeNumber((EEPROM_OFFSET + 1792 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + i);
-        Serial.println(retrievedNumber);
-        break;
-
-      case 15:
-        storeNegativeNumber((EEPROM_OFFSET + 1920 + i), frequencyError);
-        Serial.print("Reading Autotune Value ");
-        retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + i);
-        Serial.println(retrievedNumber);
-        break;
-    }
-  }
-
-  free(values);
+void setVCOStolowestA() {
+  mV = (unsigned int)(((float)(33)*NOTE_SF * oscillator1a + 0.5) + (VOLTOFFSET + autotune_value[33][oscillator]));
+  sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_a & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
+  sample_data1 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_b & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
+  sample_data1 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_c & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
+  sample_data1 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_d & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
+  sample_data1 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_e & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
+  sample_data1 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_f & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
+  sample_data1 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_g & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
+  sample_data1 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE1, sample_data1);
+  sample_data1 = (channel_h & 0xFFF0000F) | (((int(mV)) & 0xFFFF) << 4);
+  outputDAC(DAC_NOTE2, sample_data1);
 }
 
 void startAutotune() {
   sr.set(AUTOTUNE_LED, HIGH);
   display.clearDisplay();
   autotuneStart = true;
-  for (int i = 0; i < 128; i++) {
-    currentFrequency[i] = 0.00;
-  }
+  // for (int i = 0; i < 128; i++) {
+  //   currentFrequency[i] = 0.00;
+  // }
   oscillator = 0;
-  sum1 = 0;
-  count1 = 0;
   tuneNote = 0;
-  currentFrequency[tuneNote] = 0.00;
-  targetFrequency = 0.00;
+  setVCOStolowestA();
   Serial.print("CurrentFrequency ");
-  Serial.println(currentFrequency[tuneNote]);
+  Serial.println(A_NOTES[tuneNote]);
+  workingNote = A_NOTES[tuneNote];
   Serial.print("Target Frequency ");
+  targetFrequency = midi_to_freqs[workingNote][1];
   Serial.print(targetFrequency);
   Serial.println(" ");
   digitalWrite(MUX_S0, LOW);
   digitalWrite(MUX_S1, LOW);
   digitalWrite(MUX_S2, LOW);
   digitalWrite(MUX_S3, LOW);
+  delayMicroseconds(100);
   digitalWriteFast(MUX_ENABLE, HIGH);  // Enable the mux
   delayMicroseconds(100);
-}
-
-void storeNegativeNumber(int address, int8_t value) {
-  value = (value + 256) % 256;
-  if (value > 127) {
-    value -= 256;
-  }
-  EEPROM.write(address, value);
-}
-
-int8_t retrieveNegativeNumber(int address) {
-  int8_t value = EEPROM.read(address);
-  if (value > 127) {
-    value -= 256;
-  }
-  return value;
 }
 
 void ResetAutoTuneValues() {
@@ -1038,62 +731,16 @@ void ResetAutoTuneValues() {
     }
     Serial.print("All Autotune Values are 0");
     Serial.println();
-
   } else {
+    readExtrapolatedValuesFromEEPROM();
+  }
+}
+
+void DisplayAutoTuneValues() {
+  if (displayvalues) {
     for (int o = 0; o < (numOscillators + 1); o++) {
       for (int i = 0; i < 128; i++) {
-        switch (o) {
-          case 0:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + i);
-            break;
-          case 1:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 128 + i);
-            break;
-          case 2:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 256 + i);
-            break;
-          case 3:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 384 + i);
-            break;
-          case 4:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 512 + i);
-            break;
-          case 5:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 640 + i);
-            break;
-          case 6:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 768 + i);
-            break;
-          case 7:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 896 + i);
-            break;
-          case 8:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1024 + i);
-            break;
-          case 9:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1152 + i);
-            break;
-          case 10:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1280 + i);
-            break;
-          case 11:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1408 + i);
-            break;
-          case 12:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1536 + i);
-            break;
-          case 13:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1664 + i);
-            break;
-          case 14:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1792 + i);
-            break;
-          case 15:
-            retrievedNumber = retrieveNegativeNumber(EEPROM_OFFSET + 1920 + i);
-            break;
-        }
-        (autotune_value[i][o]) = retrievedNumber;
-        Serial.print("Stored Autotune Value Oscillator ");
+        Serial.print("Autotune Value Oscillator ");
         Serial.print(o);
         Serial.print(" ");
         Serial.print(i);
@@ -1101,6 +748,24 @@ void ResetAutoTuneValues() {
         Serial.println(autotune_value[i][o]);
       }
     }
+  }
+}
+
+void allowOsc1Through() {
+
+  if (osc1Through) {
+    digitalWrite(MUX_S0, LOW);
+    digitalWrite(MUX_S1, LOW);
+    digitalWrite(MUX_S2, LOW);
+    digitalWrite(MUX_S3, LOW);
+    delayMicroseconds(100);
+    digitalWrite(MUX_ENABLE, HIGH);
+  } else {
+    digitalWrite(MUX_S0, LOW);
+    digitalWrite(MUX_S1, LOW);
+    digitalWrite(MUX_S2, LOW);
+    digitalWrite(MUX_S3, LOW);
+    digitalWrite(MUX_ENABLE, LOW);
   }
 }
 
@@ -2030,7 +1695,7 @@ void allNotesOff() {
   sr.set(GATE_NOTE5, LOW);
   sr.set(GATE_NOTE6, LOW);
   sr.set(GATE_NOTE7, LOW);
-  sr.set(GATE_NOTE7, LOW);
+  sr.set(GATE_NOTE8, LOW);
 
   voices[0].note = -1;
   voices[1].note = -1;
@@ -2092,6 +1757,16 @@ void onButtonPress(uint16_t btnIndex, uint8_t btnType) {
   if (btnIndex == OFFSET_RESET && btnType == ROX_PRESSED) {
     reset = !reset;
     ResetAutoTuneValues();
+  }
+
+  if (btnIndex == OFFSET_DISPLAY && btnType == ROX_PRESSED) {
+    displayvalues = true;
+    DisplayAutoTuneValues();
+  }
+
+  if (btnIndex == OSC1_THROUGH && btnType == ROX_PRESSED) {
+    osc1Through = !osc1Through;
+    allowOsc1Through();
   }
 }
 
@@ -2277,6 +1952,7 @@ void selectMuxInput() {
       digitalWrite(MUX_S1, LOW);
       digitalWrite(MUX_S2, LOW);
       digitalWrite(MUX_S3, HIGH);
+
       break;
     // Board 2 A
     case 2:

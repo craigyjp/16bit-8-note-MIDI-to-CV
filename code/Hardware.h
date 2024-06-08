@@ -7,6 +7,8 @@ ADC *adc = new ADC();
 // 10 octave keyboard on a 3.3v powered DAC
 #define NOTE_SF 271.5
 #define VEL_SF 256.0
+#define ARRAY_SIZE 128
+#define N_LAST_POINTS 10 
 
 // Voices available
 #define NO_OF_VOICES 8
@@ -66,6 +68,8 @@ ADC *adc = new ADC();
 #define ENC_BTN 2
 #define AUTOTUNE_BTN 3
 #define OFFSET_RESET 4
+#define OFFSET_DISPLAY 5
+#define OSC1_THROUGH 6
 
 #define MUX_IN A14
 

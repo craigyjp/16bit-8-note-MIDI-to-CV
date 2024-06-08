@@ -1,6 +1,10 @@
 //
 // Autotune
 //
+
+#define A_NOTES_COUNT 8  // A0 (27.5 Hz), A1 (55 Hz), A2 (110 Hz), A3 (220 Hz), A4 (440 Hz), A5 (880 Hz), A6 (1760 Hz), A7 (3520 Hz)
+const int A_NOTES[A_NOTES_COUNT] = {33, 45, 57, 69, 81, 93, 105, 117 };  // MIDI note numbers for A0 to A7
+//const int A_NOTES[A_NOTES_COUNT] = {117, 105, 93, 81, 69, 57, 45, 33 };  // MIDI note numbers for A0 to A7
 float midi_to_freqs[128][2] = {
   { 0, 4.09 },
   { 1, 4.33 },
@@ -133,17 +137,26 @@ float midi_to_freqs[128][2] = {
 };
 
 int8_t autotune_value[128][16];
+int Htime;              //integer for storing high time
 
+int Ltime;                //integer for storing low time
+
+float Ttime;            // integer for storing total time of a cycle
+
+float frequency;        //storing frequency
+unsigned long FreqCountMeasure;
 boolean autotuneStart = false;
+double measuredFrequency;
 float sum1 = 0;
 int count1 = 0;
 elapsedMillis timeout;
+float margin = 0.01;    // Margin of error
+int workingNote = 0;
 
 const int numOscillators = 11;   // Number of oscillators - 1 as they start at 0
 const int numNotes = 128;       // Number of MIDI notes
 float targetFrequency = 0.00;
 int tuneNote = 0;
-const int hysteresisBand = 0.02; 
 
 int VOLTOFFSET = 3270;
 int oscillator;
@@ -208,6 +221,8 @@ int oscbnote1, oscbnote2, oscbnote3, oscbnote4, oscbnote5, oscbnote6, oscbnote7,
 int numPlayingVoices = 0;
 bool sustainOn = false;
 bool reset = false;
+bool displayvalues = false;
+bool osc1Through = false;
 byte sendnote, sendvelocity;
 
 float oscillator1a = 1.000;
