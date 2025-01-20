@@ -154,6 +154,7 @@ int OCTAVE_B = 0;
 int VOLTOFFSET = 3270;
 int oscillator;
 float currentFrequency[128];
+int lastUsedVoice = 0; // Global variable to store the last used voice
 
 //
 // Modulation

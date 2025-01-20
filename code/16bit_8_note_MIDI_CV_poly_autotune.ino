@@ -1270,17 +1270,117 @@ void myNoteOn(byte channel, byte note, byte velocity) {
       break;
 
     case 1:
+      switch (getVoiceNoPoly2(-1)) {
+         case 1:
+          voices[0].note = note;
+          note1 = note;
+          voices[0].velocity = velocity;
+          voices[0].timeOn = millis();
+          voices[0].keyDown = true;
+          sr.set(GATE_NOTE1, HIGH);
+          sr.set(TRIG_NOTE1, HIGH);
+          noteTrig[0] = millis();
+          voiceOn[0] = true;
+          break;
+
+        case 2:
+          voices[1].note = note;
+          note2 = note;
+          voices[1].velocity = velocity;
+          voices[1].timeOn = millis();
+          voices[1].keyDown = true;
+          sr.set(GATE_NOTE2, HIGH);
+          sr.set(TRIG_NOTE2, HIGH);
+          noteTrig[1] = millis();
+          voiceOn[1] = true;
+          break;
+
+        case 3:
+          voices[2].note = note;
+          note3 = note;
+          voices[2].velocity = velocity;
+          voices[2].timeOn = millis();
+          voices[2].keyDown = true;
+          sr.set(GATE_NOTE3, HIGH);
+          sr.set(TRIG_NOTE3, HIGH);
+          noteTrig[2] = millis();
+          voiceOn[2] = true;
+          break;
+
+        case 4:
+          voices[3].note = note;
+          note4 = note;
+          voices[3].velocity = velocity;
+          voices[3].timeOn = millis();
+          voices[3].keyDown = true;
+          sr.set(GATE_NOTE4, HIGH);
+          sr.set(TRIG_NOTE4, HIGH);
+          noteTrig[3] = millis();
+          voiceOn[3] = true;
+          break;
+
+        case 5:
+          voices[4].note = note;
+          note5 = note;
+          voices[4].velocity = velocity;
+          voices[4].timeOn = millis();
+          voices[4].keyDown = true;
+          sr.set(GATE_NOTE5, HIGH);
+          sr.set(TRIG_NOTE5, HIGH);
+          noteTrig[4] = millis();
+          voiceOn[4] = true;
+          break;
+
+        case 6:
+          voices[5].note = note;
+          note6 = note;
+          voices[5].velocity = velocity;
+          voices[5].timeOn = millis();
+          voices[5].keyDown = true;
+          sr.set(GATE_NOTE6, HIGH);
+          sr.set(TRIG_NOTE6, HIGH);
+          noteTrig[5] = millis();
+          voiceOn[5] = true;
+          break;
+
+        case 7:
+          voices[6].note = note;
+          note7 = note;
+          voices[6].velocity = velocity;
+          voices[6].timeOn = millis();
+          voices[6].keyDown = true;
+          sr.set(GATE_NOTE7, HIGH);
+          sr.set(TRIG_NOTE7, HIGH);
+          noteTrig[6] = millis();
+          voiceOn[6] = true;
+          break;
+
+        case 8:
+          voices[7].note = note;
+          note8 = note;
+          voices[7].velocity = velocity;
+          voices[7].timeOn = millis();
+          voices[7].keyDown = true;
+          sr.set(GATE_NOTE8, HIGH);
+          sr.set(TRIG_NOTE8, HIGH);
+          noteTrig[7] = millis();
+          voiceOn[7] = true;
+          break;
+      }
+      break;
+
     case 2:
     case 3:
-      if (keyboardMode == 1) {
+    case 4:
+      if (keyboardMode == 2) {
         S1 = 1;
         S2 = 1;
       }
-      if (keyboardMode == 2) {
+      if (keyboardMode == 3) {
         S1 = 0;
         S2 = 1;
       }
-      if (keyboardMode == 3) {
+      if (keyboardMode == 4) {
         S1 = 0;
         S2 = 0;
       }
@@ -1314,18 +1414,18 @@ void myNoteOn(byte channel, byte note, byte velocity) {
       }
       break;
 
-    case 4:
     case 5:
     case 6:
-      if (keyboardMode == 4) {
+    case 7:
+      if (keyboardMode == 5) {
         S1 = 1;
         S2 = 1;
       }
-      if (keyboardMode == 5) {
+      if (keyboardMode == 6) {
         S1 = 0;
         S2 = 1;
       }
-      if (keyboardMode == 6) {
+      if (keyboardMode == 7) {
         S1 = 0;
         S2 = 0;
       }
@@ -1425,17 +1525,86 @@ void myNoteOff(byte channel, byte note, byte velocity) {
       break;
 
     case 1:
+      switch (getVoiceNoPoly2(note)) {
+        case 1:
+          if (!voices[0].sustained) {
+            sr.set(GATE_NOTE1, LOW);
+            voices[0].note = -1;
+            voiceOn[0] = false;
+            voices[0].keyDown = false;
+          }
+          break;
+        case 2:
+          if (!voices[1].sustained) {
+            sr.set(GATE_NOTE2, LOW);
+            voices[1].note = -1;
+            voiceOn[1] = false;
+            voices[1].keyDown = false;
+          }
+          break;
+        case 3:
+          if (!voices[2].sustained) {
+            sr.set(GATE_NOTE3, LOW);
+            voices[2].note = -1;
+            voiceOn[2] = false;
+            voices[2].keyDown = false;
+          }
+          break;
+        case 4:
+          if (!voices[3].sustained) {
+            sr.set(GATE_NOTE4, LOW);
+            voices[3].note = -1;
+            voiceOn[3] = false;
+            voices[3].keyDown = false;
+          }
+          break;
+        case 5:
+          if (!voices[4].sustained) {
+            sr.set(GATE_NOTE5, LOW);
+            voices[4].note = -1;
+            voiceOn[4] = false;
+            voices[4].keyDown = false;
+          }
+          break;
+        case 6:
+          if (!voices[5].sustained) {
+            sr.set(GATE_NOTE6, LOW);
+            voices[5].note = -1;
+            voiceOn[5] = false;
+            voices[5].keyDown = false;
+          }
+          break;
+        case 7:
+          if (!voices[6].sustained) {
+            sr.set(GATE_NOTE7, LOW);
+            voices[6].note = -1;
+            voiceOn[6] = false;
+            voices[6].keyDown = false;
+          }
+          break;
+        case 8:
+          if (!voices[7].sustained) {
+            sr.set(GATE_NOTE8, LOW);
+            voices[7].note = -1;
+            voiceOn[7] = false;
+            voices[7].keyDown = false;
+          }
+          break;
+      }
+      break;
+
     case 2:
     case 3:
-      if (keyboardMode == 1) {
+    case 4:
+      if (keyboardMode == 2) {
         S1 = 1;
         S2 = 1;
       }
-      if (keyboardMode == 2) {
+      if (keyboardMode == 3) {
         S1 = 0;
         S2 = 1;
       }
-      if (keyboardMode == 3) {
+      if (keyboardMode == 4) {
         S1 = 0;
         S2 = 0;
       }
@@ -1456,18 +1625,18 @@ void myNoteOff(byte channel, byte note, byte velocity) {
       }
       break;
 
-    case 4:
     case 5:
     case 6:
-      if (keyboardMode == 4) {
+    case 7:
+      if (keyboardMode == 5) {
         S1 = 1;
         S2 = 1;
       }
-      if (keyboardMode == 5) {
+      if (keyboardMode == 6) {
         S1 = 0;
         S2 = 1;
       }
-      if (keyboardMode == 6) {
+      if (keyboardMode == 7) {
         S1 = 0;
         S2 = 0;
       }
@@ -1523,6 +1692,49 @@ int getVoiceNo(int note) {
     }
   }
   //Shouldn't get here, return voice 1
+  return 1;
+}
+
+int getVoiceNoPoly2(int note) {
+  voiceToReturn = -1;       // Initialize to 'null'
+  earliestTime = millis();  // Initialize to now
+
+  if (note == -1) {
+    // NoteOn() - Get the oldest free voice (recent voices may still be on the release stage)
+    if (voices[lastUsedVoice].note == -1) {
+      return lastUsedVoice + 1;
+    }
+
+    // If the last used voice is not free or doesn't exist, check if the first voice is free
+    if (voices[0].note == -1) {
+      return 1;
+    }
+
+    // Find the lowest available voice for the new note
+    for (int i = 0; i < NO_OF_VOICES; i++) {
+      if (voices[i].note == -1) {
+        return i + 1;
+      }
+    }
+
+    // If no voice is available, release the oldest note
+    int oldestVoice = 0;
+    for (int i = 1; i < NO_OF_VOICES; i++) {
+      if (voices[i].timeOn < voices[oldestVoice].timeOn) {
+        oldestVoice = i;
+      }
+    }
+    return oldestVoice + 1;
+  } else {
+    // NoteOff() - Get the voice number from the note
+    for (int i = 0; i < NO_OF_VOICES; i++) {
+      if (voices[i].note == note) {
+        return i + 1;
+      }
+    }
+  }
+
+  // Shouldn't get here, return voice 1
   return 1;
 }
 
@@ -1868,7 +2080,7 @@ void updateSelection() {  // Called whenever encoder is turned
   display.clearDisplay();
   switch (menu) {
     case KEYBOARD_MODE_SET_CH:
-      if (menu == KEYBOARD_MODE_SET_CH) keyboardMode = mod(encoderPos, 7);
+      if (menu == KEYBOARD_MODE_SET_CH) keyboardMode = mod(encoderPos, 8);
 
     case MIDI_CHANNEL_SET_CH:
       if (menu == MIDI_CHANNEL_SET_CH) masterChan = mod(encoderPos, 17);
@@ -1891,13 +2103,14 @@ void updateSelection() {  // Called whenever encoder is turned
       if (menu == SETTINGS) setHighlight(0, 6);
       display.print(F("Keyboard Mode "));
       if (menu == KEYBOARD_MODE_SET_CH) display.setTextColor(BLACK, WHITE);
-      if (keyboardMode == 0) display.print("Poly  ");
-      if (keyboardMode == 1) display.print("Uni T");
-      if (keyboardMode == 2) display.print("Uni B");
-      if (keyboardMode == 3) display.print("Uni L");
-      if (keyboardMode == 4) display.print("Mono T ");
-      if (keyboardMode == 5) display.print("Mono B ");
-      if (keyboardMode == 6) display.print("Mono L ");
+      if (keyboardMode == 0) display.print("Poly 1");
+      if (keyboardMode == 1) display.print("Poly 2");
+      if (keyboardMode == 2) display.print("Uni T");
+      if (keyboardMode == 3) display.print("Uni B");
+      if (keyboardMode == 4) display.print("Uni L");
+      if (keyboardMode == 5) display.print("Mono T ");
+      if (keyboardMode == 6) display.print("Mono B ");
+      if (keyboardMode == 7) display.print("Mono L ");
       display.println(F(""));
       display.setTextColor(WHITE, BLACK);
 
