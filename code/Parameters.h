@@ -1,10 +1,10 @@
 //
 // Autotune
-//
+//            // Running total of the readings
 
 #define A_NOTES_COUNT 8  // A0 (27.5 Hz), A1 (55 Hz), A2 (110 Hz), A3 (220 Hz), A4 (440 Hz), A5 (880 Hz), A6 (1760 Hz), A7 (3520 Hz)
 const int A_NOTES[A_NOTES_COUNT] = {33, 45, 57, 69, 81, 93, 105, 117 };  // MIDI note numbers for A0 to A7
-//const int A_NOTES[A_NOTES_COUNT] = {117, 105, 93, 81, 69, 57, 45, 33 };  // MIDI note numbers for A0 to A7
+
 float midi_to_freqs[128][2] = {
   { 0, 4.09 },
   { 1, 4.33 },
@@ -136,7 +136,9 @@ float midi_to_freqs[128][2] = {
   { 127, 6271.93 },
 };
 
-int8_t autotune_value[128][16];
+int16_t autotune_value[128][16];
+//int16_t tuningCorrections[128][16];
+
 int Htime;              //integer for storing high time
 
 int Ltime;                //integer for storing low time
@@ -147,6 +149,8 @@ float frequency;        //storing frequency
 unsigned long FreqCountMeasure;
 boolean autotuneStart = false;
 double measuredFrequency;
+double measuredFreq;
+
 float sum1 = 0;
 int count1 = 0;
 elapsedMillis timeout;
@@ -157,6 +161,7 @@ const int numOscillators = 11;   // Number of oscillators - 1 as they start at 0
 const int numNotes = 128;       // Number of MIDI notes
 float targetFrequency = 0.00;
 int tuneNote = 0;
+byte note = 0;
 
 int VOLTOFFSET = 3270;
 int oscillator;
@@ -223,6 +228,7 @@ bool sustainOn = false;
 bool reset = false;
 bool displayvalues = false;
 bool osc1Through = false;
+bool clearEEPROM = false;
 byte sendnote, sendvelocity;
 
 float oscillator1a = 1.000;

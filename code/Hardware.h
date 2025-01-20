@@ -70,6 +70,7 @@ ADC *adc = new ADC();
 #define OFFSET_RESET 4
 #define OFFSET_DISPLAY 5
 #define OSC1_THROUGH 6
+#define LOAD_SD 7
 
 #define MUX_IN A14
 
@@ -163,6 +164,8 @@ void setupHardware() {
   delayMicroseconds(1);
   digitalWrite(DAC_NOTE4, HIGH);
   SPI.endTransaction();
+
+  
 
   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(DAC_NOTE5, LOW);
