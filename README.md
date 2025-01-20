@@ -12,7 +12,7 @@ The triggers and gates are currently +5v.
 
 8 filter CV outputs
 
-8 velocity outputs
+8 velocity CV outputs
 
 8 gate outputs
 
@@ -24,7 +24,7 @@ Sustain pedal support over MIDI
 
 MIDI Channel selection or Omni
 
-Poly/Unison/Mono modes with note priority modes
+Poly1, Poly2, Unison & Mono modes with note priority modes
 
 Polyphony variable from 2-8 notes, 1 note not required as you already have unison and mono.
 
@@ -40,3 +40,30 @@ Up/Down/Select buttons for menu
 
 USB MIDI Host support as well as 5 pin DIN
 
+# During the testing all the controls were done manually with pots and buttons, but to be integrated into a polysynth these functions need to be controlled over MIDI.
+
+* MIDI CC numbers used to control functions
+
+CC 01  Modulation Wheel 0-127
+
+CC 14  VCO_B Interval. 0-127 (0-12 semitones)
+
+CC 15  VCO_B Detune. 0-127
+
+CC 16  PitchBend Depth. 0-127 (0-12 seimitones)
+
+CC 17  FM Mod Wheel Depth. 0-127
+
+CC 18  TM Mod Wheel Depth. 0-127
+
+CC 19  FM Aftertouch Depth. 0-127
+
+CC 20  TM Aftertouch Depth. 0-127
+
+CC 21  VCO_A Octave switch. (0-127) -1, 0, +1
+
+CC 22  VCO_B Octave switch. (0-127) -1, 0, +1
+
+CC 64  Sustain. 0-127  off < 63, on > 63
+
+CC 121 Start Autotune Routine.  start > 63
