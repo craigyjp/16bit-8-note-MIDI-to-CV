@@ -945,20 +945,31 @@ void myControlChange(byte channel, byte number, byte value) {
         }
         break;
 
-      // case 64:
-      //   if (value > 63) {
-      //     sustainOn = true;
-      //     sustainNotes();
-      //   } else {
-      //     sustainOn = false;
-      //     unsustainNotes();
-      //   }
-      //   break;
+      case 64:
+        switch (value) {
+        case 127:
+          sustainOn = true;
+          sustainNotes();
+          break;
+        case 0:
+          sustainOn = false;
+          unsustainNotes();
+          break;
+        }
+        break;
 
       case 121:
         if (value > 63) {
           startAutotune();
         }
+        break;
+
+      case 127:
+        keyboardMode = map(value, 0, 127, 0, 7);
+        if (keyboardMode > 0 && keyboardMode < 8) {
+          allNotesOff();
+        }
+        break;
     }
   }
 }
