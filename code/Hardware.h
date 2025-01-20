@@ -34,10 +34,6 @@ ADC *adc = new ADC();
 #define MUX_S2 35
 #define MUX_S3 36
 
-#define ANA_MUX_S0 27
-#define ANA_MUX_S1 28
-#define ANA_MUX_S2 29
-
 #define MUX_ENABLE 37
 
 //Gate outputs
@@ -72,19 +68,6 @@ ADC *adc = new ADC();
 #define OSC1_THROUGH 6
 #define LOAD_SD 7
 
-#define MUX_IN A14
-
-#define MUX1_FM_AT_DEPTH 0
-#define MUX1_TM_MOD_DEPTH 1
-#define MUX1_TM_AT_DEPTH 2
-#define MUX1_FM_MOD_DEPTH 3
-#define MUX1_spare4 4
-#define MUX1_spare5 5
-#define MUX1_spare6 6
-#define MUX1_PB_DEPTH 7
-
-#define QUANTISE_FACTOR 10
-
 
 void setupHardware() {
 
@@ -113,12 +96,7 @@ void setupHardware() {
   pinMode(MUX_S2, OUTPUT);
   pinMode(MUX_S3, OUTPUT);
 
-  pinMode(ANA_MUX_S0, OUTPUT);
-  pinMode(ANA_MUX_S1, OUTPUT);
-  pinMode(ANA_MUX_S2, OUTPUT);
-
   pinMode(MUX_ENABLE, OUTPUT);
-  //pinMode(TUNE_INPUT, INPUT);
 
   digitalWrite(DAC_NOTE1, HIGH);
   digitalWrite(DAC_NOTE2, HIGH);
@@ -130,10 +108,6 @@ void setupHardware() {
   digitalWrite(MUX_S1, LOW);
   digitalWrite(MUX_S2, LOW);
   digitalWrite(MUX_S3, LOW);
-
-  digitalWrite(ANA_MUX_S0, LOW);
-  digitalWrite(ANA_MUX_S1, LOW);
-  digitalWrite(ANA_MUX_S2, LOW);
 
   digitalWrite(MUX_ENABLE, LOW);
 
@@ -165,7 +139,7 @@ void setupHardware() {
   digitalWrite(DAC_NOTE4, HIGH);
   SPI.endTransaction();
 
-  
+
 
   SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE1));
   digitalWrite(DAC_NOTE5, LOW);

@@ -137,39 +137,23 @@ float midi_to_freqs[128][2] = {
 };
 
 int16_t autotune_value[128][16];
-//int16_t tuningCorrections[128][16];
-
-int Htime;              //integer for storing high time
-
-int Ltime;                //integer for storing low time
-
-float Ttime;            // integer for storing total time of a cycle
 
 float frequency;        //storing frequency
-unsigned long FreqCountMeasure;
 boolean autotuneStart = false;
 double measuredFrequency;
 double measuredFreq;
-
-float sum1 = 0;
-int count1 = 0;
 elapsedMillis timeout;
-float margin = 0.01;    // Margin of error
 int workingNote = 0;
-
 const int numOscillators = 11;   // Number of oscillators - 1 as they start at 0
 const int numNotes = 128;       // Number of MIDI notes
 float targetFrequency = 0.00;
 int tuneNote = 0;
 byte note = 0;
-
+int OCTAVE_A = 0;
+int OCTAVE_B = 0;
 int VOLTOFFSET = 3270;
 int oscillator;
-int8_t frequencyError;
-
 float currentFrequency[128];
-int EEPROM_OFFSET = 50;
-
 
 //
 // Modulation
@@ -202,15 +186,9 @@ int DETUNE = 0;
 int INTERVAL_POT = 0;
 int INTERVAL = 0;
 
-#define MUXCHANNELS 8
-static byte muxInput = 0;
-static int mux1ValuesPrev[MUXCHANNELS] = {};
-static int mux1Read = 0;
-
 int encoderPos, encoderPosPrev;
 
 int polyphony;
-//int polyphony;
 int masterChan;
 int masterTran;
 int previousMode;
@@ -250,7 +228,6 @@ float oscillator8b = 1.000;
 
 unsigned int velmV;
 unsigned int mV;
-int8_t retrievedNumber;
 
 float noteTrig[8];
 float monoTrig;
